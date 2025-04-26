@@ -4,8 +4,7 @@ import { useState} from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, ChevronRight, User} from "lucide-react"
-import Link from "next/link"
+import { CalendarIcon,  User} from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -414,12 +413,6 @@ export default function EnhancedCalendar() {
                 <span className="sr-only">Next</span>
               </Button>
             </div>
-            <Link href="/calendar">
-              <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
-                Full Calendar
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
           </div>
         </CardHeader>
         <CardContent className="p-4">
