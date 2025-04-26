@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CalendarIcon, ChevronLeft, ChevronRight, User } from "lucide-react"
+import Link from "next/link"
 import {
   Dialog,
   DialogContent,
@@ -505,10 +506,12 @@ export default function EnhancedCalendar() {
             <CardTitle>Upcoming Events</CardTitle>
             <CardDescription>Most recent scheduled events</CardDescription>
           </div>
-          <Button variant="outline" size="sm">
-            View All
-            <ChevronRight className="ml-1 h-4 w-4" />
-          </Button>
+          <Link href="/clients">
+              <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
+                View All
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </Link>
         </CardHeader>
         
         <CardContent className="p-0">
