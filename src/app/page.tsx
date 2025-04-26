@@ -70,23 +70,67 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Calendar Card */}
-        <Card className="col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle>Calendar</CardTitle>
-              <CardDescription>Manage your schedule and arrivals</CardDescription>
-            </div>
-            <Link href="/calendar">
-              <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
-                View All
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md border" />
-          </CardContent>
-        </Card>
+        {/* Calendar Card */}
+<Card className="col-span-1 overflow-hidden">
+  <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
+    <div>
+      <CardTitle className="text-xl font-semibold flex items-center">
+        <CalendarIcon className="mr-2 h-5 w-5 text-green-600" />
+        Calendar
+      </CardTitle>
+      <CardDescription>Manage your schedule and arrivals</CardDescription>
+    </div>
+    <div className="flex items-center gap-2">
+      <div className="flex items-center">
+        <div className="mr-2 flex items-center">
+          <div className="h-3 w-3 rounded-full bg-amber-400 mr-1"></div>
+          <span className="text-xs text-gray-500">Arrival</span>
+        </div>
+        <div className="mr-2 flex items-center">
+          <div className="h-3 w-3 rounded-full bg-green-500 mr-1"></div>
+          <span className="text-xs text-gray-500">Departure</span>
+        </div>
+      </div>
+      <Link href="/calendar">
+        <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
+          View All
+          <ChevronRight className="ml-1 h-4 w-4" />
+        </Button>
+      </Link>
+    </div>
+  </CardHeader>
+  <CardContent className="p-0">
+    <div className="p-4">
+      <Calendar 
+        mode="single" 
+        selected={date} 
+        onSelect={setDate} 
+        className="rounded-md" 
+      />
+    </div>
+    <div className="border-t p-3 bg-gray-50">
+      <h3 className="text-sm font-medium mb-2">Today&apos;s Schedule</h3>
+      {date?.getDate() === 15 ? (
+        <div className="text-sm p-2 rounded bg-amber-50 border border-amber-200 text-amber-800">
+          <div className="font-medium">John & Sarah Smith Arrival</div>
+          <div className="text-xs">2 guests • Safari Lodge</div>
+        </div>
+      ) : date?.getDate() === 18 ? (
+        <div className="text-sm p-2 rounded bg-green-50 border border-green-200 text-green-800">
+          <div className="font-medium">David Williams Departure</div>
+          <div className="text-xs">1 guest • Sunset Camp</div>
+        </div>
+      ) : date?.getDate() === 20 ? (
+        <div className="text-sm p-2 rounded bg-amber-50 border border-amber-200 text-amber-800">
+          <div className="font-medium">Thompson Family Arrival</div>
+          <div className="text-xs">4 guests • River View</div>
+        </div>
+      ) : (
+        <div className="text-sm text-gray-500">No scheduled events for this day</div>
+      )}
+    </div>
+  </CardContent>
+</Card>
 
         {/* Upcoming Arrivals */}
         <Card className="col-span-1">
