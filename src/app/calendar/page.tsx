@@ -1,10 +1,10 @@
 "use client"
 
-import { useState} from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CalendarIcon,  User} from "lucide-react"
+import { CalendarIcon, ChevronLeft, ChevronRight, User } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { cn } from "@/lib/utils" // Assuming you have a utils file with cn function
 
 // Mock calendar events - Complete list with various types
 const mockEvents = [
@@ -194,23 +195,163 @@ const mockEvents = [
   }
 ]
 
+// Custom shadcn-inspired Calendar Component
+const CustomCalendarMonth = ({
+  month,
+  selectedDate,
+  onSelectDate,
+  events
+}: {
+  month: Date
+  selectedDate: Date
+  onSelectDate: (date: Date) => void
+  events: typeof mockEvents
+}) => {
+  const monthStart = new Date(month.getFullYear(), month.getMonth(), 1)
+  const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0)
+  const startDate = new Date(monthStart)
+  const endDate = new Date(monthEnd)
+  
+  // Adjust the start date to begin with the appropriate day of the week (Sunday = 0)
+  const dayOfWeek = startDate.getDay()
+  startDate.setDate(startDate.getDate() - dayOfWeek)
+  
+  // Ensure we have complete weeks
+  endDate.setDate(endDate.getDate() + (6 - endDate.getDay()))
+  
+  // Array of weekday headers
+  const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+  
+  // Generate all dates to display
+  const calendarDays: Date[] = []
+  const currentDate = new Date(startDate)
+  
+  while (currentDate <= endDate) {
+    calendarDays.push(new Date(currentDate))
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+  
+  // Split into weeks
+  const weeks: Date[][] = []
+  for (let i = 0; i < calendarDays.length; i += 7) {
+    weeks.push(calendarDays.slice(i, i + 7))
+  }
+
+  // Get events for a specific date
+  const getEventsForDate = (date: Date) => {
+    return events.filter(
+      (event) =>
+        event.date.getDate() === date.getDate() &&
+        event.date.getMonth() === date.getMonth() &&
+        event.date.getFullYear() === date.getFullYear()
+    )
+  }
+
+  // Group events by type for a specific date
+  const getEventsByType = (date: Date) => {
+    const dateEvents = getEventsForDate(date)
+    const eventTypes = new Set(dateEvents.map(event => event.type))
+    return Array.from(eventTypes)
+  }
+
+  // Get event type indicator color
+  const getEventTypeColor = (type: string) => {
+    switch (type) {
+      case "arrival":
+        return "bg-amber-500"
+      case "departure":
+        return "bg-green-500"
+      case "task":
+        return "bg-blue-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
+
+  return (
+    <div className="rounded-md border border-gray-200 shadow-sm">
+      <div className="px-4 py-3 bg-white border-b">
+        <div className="font-medium text-gray-900">
+          {month.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+        </div>
+      </div>
+      <div className="p-3">
+        <div className="grid grid-cols-7 gap-px">
+          {weekDays.map((day, index) => (
+            <div
+              key={index}
+              className="text-center p-1 text-xs font-medium text-gray-500"
+            >
+              {day}
+            </div>
+          ))}
+          
+          {weeks.map((week, weekIndex) => 
+            week.map((day, dayIndex) => {
+              const isCurrentMonth = day.getMonth() === month.getMonth()
+              const isToday = new Date().toDateString() === day.toDateString()
+              const isSelected = selectedDate && 
+                selectedDate.toDateString() === day.toDateString()
+              const eventTypes = getEventsByType(day)
+              const hasEvents = eventTypes.length > 0
+              
+              return (
+                <div 
+                  key={`${weekIndex}-${dayIndex}`}
+                  onClick={() => isCurrentMonth && onSelectDate(day)}
+                  className={cn(
+                    "h-10 w-full p-0 text-center text-sm relative",
+                    isCurrentMonth ? "text-gray-900" : "text-gray-400",
+                    isSelected ? "bg-green-50" : "",
+                    isToday ? "bg-green-50 font-bold" : "",
+                    isCurrentMonth && "hover:bg-gray-100 cursor-pointer"
+                  )}
+                >
+                  <div className="h-full w-full flex items-center justify-center">
+                    <span className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-full",
+                      isSelected && "bg-green-100 font-semibold"
+                    )}>
+                      {day.getDate()}
+                    </span>
+                  </div>
+                  
+                  {hasEvents && isCurrentMonth && (
+                    <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-0.5">
+                      {eventTypes.map((type, index) => (
+                        <div 
+                          key={index} 
+                          className={`h-1.5 w-1.5 rounded-full ${getEventTypeColor(type)}`}
+                        ></div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function EnhancedCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [currentViewDate, setCurrentViewDate] = useState<Date>(new Date())
   const [viewEventsOpen, setViewEventsOpen] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedDateEvents, setSelectedDateEvents] = useState<any[]>([])
+  const [selectedDateEvents, setSelectedDateEvents] = useState<typeof mockEvents>([])
 
   // Generate an array of the next 6 months
   const getMonthsToDisplay = () => {
-    const months = [];
+    const months = []
     for (let i = 0; i < 6; i++) {
-      const date = new Date(currentViewDate);
-      date.setMonth(currentViewDate.getMonth() + i);
-      months.push(date);
+      const date = new Date(currentViewDate)
+      date.setMonth(currentViewDate.getMonth() + i)
+      months.push(date)
     }
-    return months;
-  };
+    return months
+  }
 
   // Get events for a specific date
   const getEventsForDate = (date: Date) => {
@@ -219,46 +360,46 @@ export default function EnhancedCalendar() {
         event.date.getDate() === date.getDate() &&
         event.date.getMonth() === date.getMonth() &&
         event.date.getFullYear() === date.getFullYear()
-    );
-  };
+    )
+  }
 
-  // Get event type indicator color
-  const getEventTypeColor = (type: string) => {
-    switch (type) {
-      case "arrival":
-        return "bg-amber-500";
-      case "departure":
-        return "bg-green-500";
-      case "task":
-        return "bg-blue-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  // Get event type badge style
+  // Get event type badge style - shadcn style
   const getEventTypeBadgeStyle = (type: string) => {
     switch (type) {
       case "arrival":
-        return "bg-amber-100 text-amber-800 hover:bg-amber-100";
+        return "bg-amber-100 text-amber-800 hover:bg-amber-100"
       case "departure":
-        return "bg-green-100 text-green-800 hover:bg-green-100";
+        return "bg-green-100 text-green-800 hover:bg-green-100"
       case "task":
-        return "bg-blue-100 text-blue-800 hover:bg-blue-100";
+        return "bg-blue-100 text-blue-800 hover:bg-blue-100"
       default:
-        return "bg-gray-100 text-gray-800 hover:bg-gray-100";
+        return "bg-gray-100 text-gray-800 hover:bg-gray-100"
     }
-  };
+  }
+
+  // Get event type background color for icons
+  const getEventTypeIconBg = (type: string) => {
+    switch (type) {
+      case "arrival":
+        return "bg-amber-100 text-amber-600"
+      case "departure":
+        return "bg-green-100 text-green-600"
+      case "task":
+        return "bg-blue-100 text-blue-600"
+      default:
+        return "bg-gray-100 text-gray-600"
+    }
+  }
 
   // Handle date selection
   const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    const events = getEventsForDate(date);
-    setSelectedDateEvents(events);
+    setSelectedDate(date)
+    const events = getEventsForDate(date)
+    setSelectedDateEvents(events)
     if (events.length > 0) {
-      setViewEventsOpen(true);
+      setViewEventsOpen(true)
     }
-  };
+  }
 
   // Format date for display
   const formatDate = (date: Date) => {
@@ -267,130 +408,31 @@ export default function EnhancedCalendar() {
       month: "long",
       day: "numeric",
       year: "numeric"
-    });
-  };
+    })
+  }
 
   // Navigate to previous 6 months
   const previousMonths = () => {
-    const newDate = new Date(currentViewDate);
-    newDate.setMonth(currentViewDate.getMonth() - 6);
-    setCurrentViewDate(newDate);
-  };
+    const newDate = new Date(currentViewDate)
+    newDate.setMonth(currentViewDate.getMonth() - 6)
+    setCurrentViewDate(newDate)
+  }
 
   // Navigate to next 6 months
   const nextMonths = () => {
-    const newDate = new Date(currentViewDate);
-    newDate.setMonth(currentViewDate.getMonth() + 6);
-    setCurrentViewDate(newDate);
-  };
+    const newDate = new Date(currentViewDate)
+    newDate.setMonth(currentViewDate.getMonth() + 6)
+    setCurrentViewDate(newDate)
+  }
 
   // Reset to current month
   const goToToday = () => {
-    setCurrentViewDate(new Date());
-  };
-
-  // Group events by type for a specific date
-  const getEventsByType = (date: Date) => {
-    const events = getEventsForDate(date);
-    const eventTypes = new Set(events.map(event => event.type));
-    return Array.from(eventTypes);
-  };
-
-  // Custom calendar rendering
-  const renderCalendarMonth = (month: Date) => {
-    const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
-    const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-    const startDate = new Date(monthStart);
-    const endDate = new Date(monthEnd);
-    
-    // Adjust the start date to begin with the appropriate day of the week (Sunday = 0)
-    const dayOfWeek = startDate.getDay();
-    startDate.setDate(startDate.getDate() - dayOfWeek);
-    
-    // Ensure we have complete weeks
-    endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
-    
-    // Array of weekday headers
-    const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    
-    // Generate all dates to display
-    const calendarDays = [];
-    const currentDate = new Date(startDate);
-    
-    while (currentDate <= endDate) {
-      calendarDays.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    
-    // Split into weeks
-    const weeks = [];
-    for (let i = 0; i < calendarDays.length; i += 7) {
-      weeks.push(calendarDays.slice(i, i + 7));
-    }
-
-    return (
-      <div className="border rounded-md p-2 h-full flex flex-col">
-        <div className="text-center font-medium mb-2">
-          {month.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-        </div>
-        
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              {weekDays.map((day, index) => (
-                <th key={index} className="text-xs font-medium text-center p-1">
-                  {day}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {weeks.map((week, weekIndex) => (
-              <tr key={weekIndex}>
-                {week.map((day, dayIndex) => {
-                  const isCurrentMonth = day.getMonth() === month.getMonth();
-                  const isToday = new Date().toDateString() === day.toDateString();
-                  const isSelected = selectedDate.toDateString() === day.toDateString();
-                  const eventTypes = getEventsByType(day);
-                  const hasEvents = eventTypes.length > 0;
-                  
-                  return (
-                    <td 
-                      key={dayIndex} 
-                      className={`text-center p-1 relative ${
-                        isCurrentMonth ? '' : 'text-gray-300'
-                      } ${isToday ? 'bg-green-50' : ''} ${
-                        isSelected ? 'bg-green-100' : ''
-                      } hover:bg-gray-100 cursor-pointer`}
-                      onClick={() => isCurrentMonth && handleDateSelect(day)}
-                    >
-                      <div className="w-7 h-7 mx-auto flex items-center justify-center relative">
-                        {day.getDate()}
-                        {hasEvents && isCurrentMonth && (
-                          <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-1">
-                            {eventTypes.map((type, index) => (
-                              <div 
-                                key={index} 
-                                className={`h-1 w-1 rounded-full ${getEventTypeColor(type)}`}
-                              ></div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
+    setCurrentViewDate(new Date())
+  }
 
   return (
-    <div className="col-span-1 overflow-hidden">
-      <Card className="mb-6">
+    <div className="space-y-6">
+      <Card className="overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
           <div>
             <CardTitle className="text-xl font-semibold flex items-center">
@@ -404,27 +446,43 @@ export default function EnhancedCalendar() {
               Today
             </Button>
             <div className="flex">
-              <Button variant="outline" size="sm" className="rounded-r-none" onClick={previousMonths}>
-                <span className="h-4 w-4">←</span>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="rounded-r-none h-8 w-8" 
+                onClick={previousMonths}
+              >
+                <ChevronLeft className="h-4 w-4" />
                 <span className="sr-only">Previous</span>
               </Button>
-              <Button variant="outline" size="sm" className="rounded-l-none" onClick={nextMonths}>
-                <span className="h-4 w-4">→</span>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="rounded-l-none h-8 w-8" 
+                onClick={nextMonths}
+              >
+                <ChevronRight className="h-4 w-4" />
                 <span className="sr-only">Next</span>
               </Button>
             </div>
           </div>
         </CardHeader>
+        
         <CardContent className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {getMonthsToDisplay().map((month, index) => (
-              <div key={index} className="min-h-[220px]">
-                {renderCalendarMonth(month)}
+              <div key={index}>
+                <CustomCalendarMonth
+                  month={month}
+                  selectedDate={selectedDate}
+                  onSelectDate={handleDateSelect}
+                  events={mockEvents}
+                />
               </div>
             ))}
           </div>
           
-          <div className="mt-4 flex items-center justify-center gap-6">
+          <div className="mt-6 pt-4 border-t flex items-center justify-center gap-6">
             <div className="flex items-center">
               <div className="h-3 w-3 rounded-full bg-amber-500 mr-2"></div>
               <span className="text-xs text-gray-600">Arrival</span>
@@ -447,7 +505,12 @@ export default function EnhancedCalendar() {
             <CardTitle>Upcoming Events</CardTitle>
             <CardDescription>Most recent scheduled events</CardDescription>
           </div>
+          <Button variant="outline" size="sm">
+            View All
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
         </CardHeader>
+        
         <CardContent className="p-0">
           <div className="divide-y">
             {mockEvents
@@ -455,13 +518,13 @@ export default function EnhancedCalendar() {
               .sort((a, b) => a.date.getTime() - b.date.getTime()) // Sort by date
               .slice(0, 5) // Get only 5 events
               .map(event => (
-                <div key={event.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                <div key={event.id} className="py-3 px-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                   <div className="flex items-center">
-                    <div className={`p-2 rounded-lg ${getEventTypeBadgeStyle(event.type)} mr-4`}>
-                      <User className="h-5 w-5" />
+                    <div className={`p-2 rounded-full ${getEventTypeIconBg(event.type)} mr-4`}>
+                      <User className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="font-medium">{event.title}</h3>
+                      <h3 className="font-medium text-sm">{event.title}</h3>
                       <p className="text-sm text-gray-500">
                         {event.date.toLocaleDateString("en-US", { 
                           month: "short", 
@@ -482,8 +545,8 @@ export default function EnhancedCalendar() {
       </Card>
 
       {/* View Events Dialog */}
-      <Dialog open={viewEventsOpen} onOpenChange={setViewEventsOpen} >
-        <DialogContent className="sm:max-w-[525px] bg-white">
+      <Dialog open={viewEventsOpen} onOpenChange={setViewEventsOpen}>
+        <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
             <DialogTitle>Events for {formatDate(selectedDate)}</DialogTitle>
             <DialogDescription>
@@ -492,13 +555,14 @@ export default function EnhancedCalendar() {
                 : `${selectedDateEvents.length} event(s) scheduled.`}
             </DialogDescription>
           </DialogHeader>
+          
           <div className="py-4 space-y-4">
             {selectedDateEvents.length > 0 ? (
               selectedDateEvents.map((event) => (
                 <div key={event.id} className="flex items-center justify-between border-b pb-3 last:border-0">
                   <div className="flex items-center">
-                    <div className={`p-2 rounded-lg ${getEventTypeBadgeStyle(event.type)} mr-4`}>
-                      <User className="h-5 w-5" />
+                    <div className={`p-2 rounded-full ${getEventTypeIconBg(event.type)} mr-4`}>
+                      <User className="h-4 w-4" />
                     </div>
                     <div>
                       <h3 className="font-medium">{event.title}</h3>
@@ -516,10 +580,12 @@ export default function EnhancedCalendar() {
               </div>
             )}
           </div>
-          <DialogFooter>
+          
+          <DialogFooter className="flex justify-between">
             <Button variant="outline" onClick={() => setViewEventsOpen(false)}>
               Close
             </Button>
+            <Button>Add Event</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
