@@ -69,7 +69,7 @@ export default function Sidebar() {
           {/* Sidebar header */}
           <div className="flex h-16 items-center justify-between px-4 border-b">
             <div className="flex items-center">
-              <span className="text-xl font-bold text-green-600">Safari Admin</span>
+              <span className="text-xl font-bold text-green-600">Super Africa Admin</span>
             </div>
             <Button variant="ghost" size="icon" onClick={toggle} className="lg:hidden">
               <ChevronLeft className="h-5 w-5" />
@@ -105,7 +105,7 @@ export default function Sidebar() {
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium text-gray-700">Admin User</p>
-                <p className="text-xs text-gray-500">admin@safari.com</p>
+                <p className="text-xs text-gray-500">admin@superafrica.com</p>
               </div>
             </div>
           </div>

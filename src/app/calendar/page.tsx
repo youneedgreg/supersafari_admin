@@ -549,7 +549,7 @@ export default function EnhancedCalendar() {
 
       {/* View Events Dialog */}
       <Dialog open={viewEventsOpen} onOpenChange={setViewEventsOpen}>
-        <DialogContent className="sm:max-w-[525px]">
+        <DialogContent className="sm:max-w-[525px] bg-white">
           <DialogHeader>
             <DialogTitle>Events for {formatDate(selectedDate)}</DialogTitle>
             <DialogDescription>
@@ -588,7 +588,6 @@ export default function EnhancedCalendar() {
             <Button variant="outline" onClick={() => setViewEventsOpen(false)}>
               Close
             </Button>
-            <Button>Add Event</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

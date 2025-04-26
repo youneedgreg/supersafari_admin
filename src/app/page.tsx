@@ -190,7 +190,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Welcome back to your safari management system</p>
+          <p className="text-gray-500 mt-1">Welcome back to your super africa admin management system</p>
         </div>
         <div className="mt-4 md:mt-0 space-x-2">
           <Button variant="outline">
@@ -265,7 +265,7 @@ export default function Dashboard() {
               {date?.getDate() === 15 ? (
                 <div className="text-sm p-2 rounded bg-amber-50 border border-amber-200 text-amber-800">
                   <div className="font-medium">John & Sarah Smith Arrival</div>
-                  <div className="text-xs">2 guests • Safari Lodge</div>
+                  <div className="text-xs">2 guests • super africa admin Lodge</div>
                 </div>
               ) : date?.getDate() === 18 ? (
                 <div className="text-sm p-2 rounded bg-green-50 border border-green-200 text-green-800">
