@@ -12,7 +12,7 @@ export function SonnerProvider() {
           color: "black",
           border: "1px solid #E2E8F0",
         },
-        className: "border border-border shadow-lg",
+        className: "border shadow-lg",
       }}
       theme="light"
       closeButton

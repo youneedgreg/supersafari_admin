@@ -20,9 +20,15 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <ThemeProvider 
+          attribute="class" 
+          defaultTheme="light" 
+          enableSystem={false}
+          forcedTheme="light"
+          disableTransitionOnChange
+        >
           <SidebarProvider>
             <div className="flex h-screen overflow-hidden">
               <Sidebar />
