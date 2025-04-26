@@ -169,64 +169,94 @@ export default function ClientsPage() {
                 Add New Client
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[525px]">
-              <DialogHeader>
-                <DialogTitle>Add New Client</DialogTitle>
-                <DialogDescription>Enter the client details to create a new reservation.</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <Label htmlFor="name">Client Name</Label>
-                    <Input id="name" placeholder="Full name or group name" />
-                  </div>
-                  <div className="col-span-1">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="Email address" />
-                  </div>
-                  <div className="col-span-1">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input id="phone" placeholder="Phone number" />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="location">Location</Label>
-                    <Input id="location" placeholder="City, Country" />
-                  </div>
-                  <div className="col-span-1">
-                    <Label htmlFor="arrival">Arrival Date</Label>
-                    <Input id="arrival" type="date" />
-                  </div>
-                  <div className="col-span-1">
-                    <Label htmlFor="departure">Departure Date</Label>
-                    <Input id="departure" type="date" />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="guests">Number of Guests</Label>
-                    <Input id="guests" type="number" min="1" placeholder="Number of guests" />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="notes">Initial Notes</Label>
-                    <Textarea id="notes" placeholder="Add any initial notes about the client" />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddClientOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={() => {
-                    setIsAddClientOpen(false)
-                    toast.success("Client added successfully", {
-                      description: "The new client has been added to the planning stage.",
-                    })
-                  }}
-                >
-                  Add Client
-                </Button>
-              </DialogFooter>
-            </DialogContent>
+            <DialogContent className="sm:max-w-[525px] bg-white max-h-[90vh]">
+  <DialogHeader>
+    <DialogTitle>Add New Client</DialogTitle>
+    <DialogDescription>Enter the client details to create a new reservation.</DialogDescription>
+  </DialogHeader>
+  <div className="max-h-[60vh] overflow-y-auto pr-2">
+    <div className="grid gap-4 py-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="col-span-2">
+          <Label htmlFor="name">Client Name</Label>
+          <Input id="name" placeholder="Full name or group name" />
+        </div>
+        <div className="col-span-1">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" placeholder="Email address" />
+        </div>
+        <div className="col-span-1">
+          <Label htmlFor="phone">Phone</Label>
+          <Input id="phone" placeholder="Phone number" />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="location">Location</Label>
+          <Input id="location" placeholder="Country" />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="passport">Passport Number</Label>
+          <Input id="passport" placeholder="Passport Number" />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="tourName">Tour Name</Label>
+          <Input id="tourName" placeholder="Tour Name" />
+        </div>
+        <div className="col-span-1">
+          <Label htmlFor="arrival">Arrival Date</Label>
+          <Input id="arrival" type="date" />
+        </div>
+        <div className="col-span-1">
+          <Label htmlFor="departure">Departure Date</Label>
+          <Input id="departure" type="date" />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="tourName">Flight Details</Label>
+          <Input id="flightDetails" placeholder="Flight Details" />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="adults">Number of Adults</Label>
+          <Input id="adults" type="number" min="1" placeholder="Number of adults" />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="children">Number of Children</Label>
+          <Input id="children" type="number" min="1" placeholder="Number of children" />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="notes">Details of travel partners (name, age, email)</Label>
+          <Textarea id="partnerDetails" placeholder="Add any details of travel partners" />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="notes">Dietary requirements or other special requirements</Label>
+          <Textarea id="diet" placeholder="Dietary requirements or other special requirements" />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="children">Name of Next of Kin</Label>
+          <Input id="nextOfKin" placeholder="Name of next of kin" />
+        </div>
+        <div className="col-span-2">
+          <Label htmlFor="children">Next of Kin&apos;s Email</Label>
+          <Input id="emailOfKin" placeholder="Next of kin's email" />
+        </div>
+      </div>
+    </div>
+  </div>
+  <DialogFooter className="mt-2">
+    <Button variant="outline" onClick={() => setIsAddClientOpen(false)}>
+      Cancel
+    </Button>
+    <Button
+      className="bg-green-600 hover:bg-green-700"
+      onClick={() => {
+        setIsAddClientOpen(false)
+        toast.success("Client added successfully", {
+          description: "The new client has been added to the planning stage.",
+        })
+      }}
+    >
+      Add Client
+    </Button>
+  </DialogFooter>
+</DialogContent>
           </Dialog>
         </div>
       </div>
@@ -334,7 +364,7 @@ export default function ClientsPage() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="bg-white">
                             <DropdownMenuItem>Edit Details</DropdownMenuItem>
                             <DropdownMenuItem>Send Email</DropdownMenuItem>
                             <DropdownMenuItem>Generate Invoice</DropdownMenuItem>
