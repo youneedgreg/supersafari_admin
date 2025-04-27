@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CalendarIcon, 
   ChevronRight,
@@ -14,20 +15,53 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays, parseISO } from 'date-fns';
+
+// Types for our data
+interface DashboardStats {
+  totalClients: number;
+  planning: number;
+  confirmed: number;
+  booked: number;
+  completed: number;
+}
+
+interface Arrival {
+  name: string;
+  arrivalDate: string;
+  totalGuests: number;
+  status: string;
+}
+
+interface Task {
+  title: string;
+  due: string;
+  priority: string;
+}
+
+interface CalendarEvent {
+  id: number;
+  name: string;
+  arrivalDate: string;
+  departureDate: string;
+  status: string;
+  totalGuests: number;
+}
 
 interface CustomCalendarProps {
   mode?: "single" | "multiple" | "range";
   selected?: Date | undefined;
   onSelect?: (date: Date) => void;
   className?: string;
+  events?: CalendarEvent[];
 }
 
 // Custom Calendar Component
 const CustomCalendar: React.FC<CustomCalendarProps> = ({ 
   selected,
   onSelect,
-  className = ""
+  className = "",
+  events = []
 }) => {
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [activeDate, setActiveDate] = useState<Date>(selected || new Date());
@@ -93,15 +127,27 @@ const CustomCalendar: React.FC<CustomCalendarProps> = ({
     const startDate = startOfWeek(monthStart);
     const endDate = endOfWeek(monthEnd);
 
-    // Event dates - hardcoded for demo, would come from props in real app
+    // Check if a date has arrivals or departures from the events
     const hasArrival = (date: Date) => {
-      const day = date.getDate();
-      return day === 15 || day === 20;
+      return events.some(event => {
+        try {
+          const arrivalDate = new Date(event.arrivalDate);
+          return isSameDay(date, arrivalDate);
+        } catch (e) {
+          return false;
+        }
+      });
     };
 
     const hasDeparture = (date: Date) => {
-      const day = date.getDate();
-      return day === 18;
+      return events.some(event => {
+        try {
+          const departureDate = new Date(event.departureDate);
+          return isSameDay(date, departureDate);
+        } catch (e) {
+          return false;
+        }
+      });
     };
 
     const rows = [];
@@ -162,28 +208,76 @@ const CustomCalendar: React.FC<CustomCalendarProps> = ({
 };
 
 export default function Dashboard() {
-  const [date, setDate] = useState<Date | undefined>(new Date())
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [stats, setStats] = useState<DashboardStats>({
+    totalClients: 0,
+    planning: 0,
+    confirmed: 0,
+    booked: 0,
+    completed: 0,
+  });
+  const [upcomingArrivals, setUpcomingArrivals] = useState<Arrival[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for dashboard
-  const stats = [
-    { title: "Total Clients", value: 124, icon: Users, color: "bg-green-100 text-green-600" },
-    { title: "Planning", value: 18, icon: ClipboardList, color: "bg-blue-100 text-blue-600" },
-    { title: "Confirmed", value: 42, icon: Users, color: "bg-amber-100 text-amber-600" },
-    { title: "Booked", value: 36, icon: Users, color: "bg-purple-100 text-purple-600" },
-    { title: "Completed", value: 28, icon: Users, color: "bg-emerald-100 text-emerald-600" },
-  ]
+  useEffect(() => {
+    // Fetch dashboard stats
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch stats for the dashboard
+        const statsResponse = await fetch('/api/dashboard/stats');
+        const statsData = await statsResponse.json();
+        setStats(statsData);
+        
+        // Fetch upcoming arrivals
+        const arrivalsResponse = await fetch('/api/dashboard/arrivals');
+        const arrivalsData = await arrivalsResponse.json();
+        setUpcomingArrivals(arrivalsData);
+        
+        // Fetch calendar events (arrivals and departures)
+        const eventsResponse = await fetch('/api/dashboard/events');
+        const eventsData = await eventsResponse.json();
+        setCalendarEvents(eventsData);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
-  const upcomingArrivals = [
-    { name: "John & Sarah Smith", date: "May 15, 2023", guests: 2, status: "Confirmed" },
-    { name: "David Williams", date: "May 18, 2023", guests: 1, status: "Booked" },
-    { name: "Thompson Family", date: "May 20, 2023", guests: 4, status: "Confirmed" },
-  ]
-
+  // Hardcoded pending tasks for now
   const pendingTasks = [
     { title: "Book flight for Thompson Family", due: "May 10, 2023", priority: "High" },
     { title: "Send invoice to David Williams", due: "May 8, 2023", priority: "Medium" },
     { title: "Confirm hotel for Smith couple", due: "May 9, 2023", priority: "High" },
-  ]
+  ];
+
+  // The Stats array for the cards
+  const statsCards = [
+    { title: "Total Clients", value: stats.totalClients, icon: Users, color: "bg-green-100 text-green-600" },
+    { title: "Planning", value: stats.planning, icon: ClipboardList, color: "bg-blue-100 text-blue-600" },
+    { title: "Confirmed", value: stats.confirmed, icon: Users, color: "bg-amber-100 text-amber-600" },
+    { title: "Booked", value: stats.booked, icon: Users, color: "bg-purple-100 text-purple-600" },
+    { title: "Completed", value: stats.completed, icon: Users, color: "bg-emerald-100 text-emerald-600" },
+  ];
+
+  // Find events for the selected date
+  const selectedDateEvents = calendarEvents.filter(event => {
+    try {
+      const arrivalDate = new Date(event.arrivalDate);
+      const departureDate = new Date(event.departureDate);
+      return isSameDay(new Date(date!), arrivalDate) || isSameDay(new Date(date!), departureDate);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e) {
+      return false;
+    }
+  });
 
   return (
     <div className="p-6">
@@ -206,7 +300,7 @@ export default function Dashboard() {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        {stats.map((stat, index) => (
+        {statsCards.map((stat, index) => (
           <Card key={index} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex items-center">
               <div className={`p-2 rounded-lg ${stat.color} mr-4`}>
@@ -214,7 +308,9 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">{stat.title}</p>
-                <h3 className="text-2xl font-bold">{stat.value}</h3>
+                <h3 className="text-2xl font-bold">
+                  {loading ? '...' : stat.value}
+                </h3>
               </div>
             </CardContent>
           </Card>
@@ -257,26 +353,33 @@ export default function Dashboard() {
                 mode="single" 
                 selected={date} 
                 onSelect={setDate} 
-                className="rounded-md" 
+                className="rounded-md"
+                events={calendarEvents}
               />
             </div>
             <div className="border-t p-3 bg-gray-50">
               <h3 className="text-sm font-medium mb-2">Today&apos;s Schedule</h3>
-              {date?.getDate() === 15 ? (
-                <div className="text-sm p-2 rounded bg-amber-50 border border-amber-200 text-amber-800">
-                  <div className="font-medium">John & Sarah Smith Arrival</div>
-                  <div className="text-xs">2 guests • super africa admin Lodge</div>
-                </div>
-              ) : date?.getDate() === 18 ? (
-                <div className="text-sm p-2 rounded bg-green-50 border border-green-200 text-green-800">
-                  <div className="font-medium">David Williams Departure</div>
-                  <div className="text-xs">1 guest • Sunset Camp</div>
-                </div>
-              ) : date?.getDate() === 20 ? (
-                <div className="text-sm p-2 rounded bg-amber-50 border border-amber-200 text-amber-800">
-                  <div className="font-medium">Thompson Family Arrival</div>
-                  <div className="text-xs">4 guests • River View</div>
-                </div>
+              {selectedDateEvents.length > 0 ? (
+                selectedDateEvents.map((event, idx) => {
+                  const isArrival = isSameDay(new Date(event.arrivalDate), date!);
+                  return (
+                    <div 
+                      key={idx}
+                      className={`text-sm p-2 rounded ${
+                        isArrival 
+                          ? "bg-amber-50 border border-amber-200 text-amber-800" 
+                          : "bg-green-50 border border-green-200 text-green-800"
+                      } ${idx > 0 ? "mt-2" : ""}`}
+                    >
+                      <div className="font-medium">
+                        {event.name} {isArrival ? "Arrival" : "Departure"}
+                      </div>
+                      <div className="text-xs">
+                        {event.totalGuests} guest{event.totalGuests !== 1 ? "s" : ""} • {event.status}
+                      </div>
+                    </div>
+                  );
+                })
               ) : (
                 <div className="text-sm text-gray-500">No scheduled events for this day</div>
               )}
@@ -299,28 +402,36 @@ export default function Dashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {upcomingArrivals.map((arrival, index) => (
-                <div key={index} className="flex items-center justify-between border-b pb-3 last:border-0">
-                  <div>
-                    <p className="font-medium">{arrival.name}</p>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <CalendarIcon className="mr-1 h-3 w-3" />
-                      {arrival.date} • {arrival.guests} guests
+            {loading ? (
+              <div className="py-8 text-center text-gray-500">Loading arrivals...</div>
+            ) : upcomingArrivals.length > 0 ? (
+              <div className="space-y-4">
+                {upcomingArrivals.map((arrival, index) => (
+                  <div key={index} className="flex items-center justify-between border-b pb-3 last:border-0">
+                    <div>
+                      <p className="font-medium">{arrival.name}</p>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <CalendarIcon className="mr-1 h-3 w-3" />
+                        {arrival.arrivalDate} • {arrival.totalGuests} guest{arrival.totalGuests !== 1 ? "s" : ""}
+                      </div>
                     </div>
+                    <Badge
+                      className={
+                        arrival.status.toLowerCase() === "confirmed"
+                          ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
+                          : arrival.status.toLowerCase() === "booked"
+                            ? "bg-purple-100 text-purple-800 hover:bg-purple-100"
+                            : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                      }
+                    >
+                      {arrival.status}
+                    </Badge>
                   </div>
-                  <Badge
-                    className={
-                      arrival.status === "Confirmed"
-                        ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
-                        : "bg-purple-100 text-purple-800 hover:bg-purple-100"
-                    }
-                  >
-                    {arrival.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-gray-500">No upcoming arrivals</div>
+            )}
           </CardContent>
         </Card>
       </div>
