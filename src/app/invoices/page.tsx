@@ -304,7 +304,7 @@ export default function InvoicesPage() {
                     <div className="flex items-center mt-4 md:mt-0 space-x-2">
                       <div className="text-right mr-4">
                         <p className="text-sm text-gray-500">Amount</p>
-                        <p className="font-semibold">${invoice.amount.toLocaleString()}</p>
+                        <p className="font-semibold">Ksh {invoice.amount.toLocaleString()}</p>
                       </div>
                       <Button
                         variant="outline"
@@ -411,8 +411,8 @@ export default function InvoicesPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                           {item.quantity}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${item.price}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${item.total}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">Ksh {item.price}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">Ksh {item.total}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -423,11 +423,11 @@ export default function InvoicesPage() {
                 <div className="w-64">
                   <div className="flex justify-between py-2">
                     <span className="font-medium">Subtotal:</span>
-                    <span>${selectedInvoice.amount}</span>
+                    <span>Ksh {selectedInvoice.amount}</span>
                   </div>
                   <div className="flex justify-between py-2 border-t border-gray-200">
                     <span className="font-bold">Total:</span>
-                    <span className="font-bold">${selectedInvoice.amount}</span>
+                    <span className="font-bold">Ksh {selectedInvoice.amount}</span>
                   </div>
                 </div>
               </div>
