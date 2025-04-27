@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     
     // SQL to insert a new client
     const query = `
-      INSERT INTO clients (
+      INSERT INTO sgftw_reservation_submissions (
         name, email, phone, location, passport, tour_name, 
         arrival_date, departure_date, flight_details, adults, 
         children, partner_details, special_requirements, 

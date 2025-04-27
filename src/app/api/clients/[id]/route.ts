@@ -4,19 +4,23 @@ import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import type { NextRequest } from 'next/server';
 
-interface RouteParams {
+// Define the params type according to Next.js requirements
+interface Params {
   params: {
     id: string;
   };
 }
 
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(
+  request: NextRequest,
+  { params }: Params
+) {
   try {
     const { id } = params;
     const updateData = await request.json();
     
     // Build the query based on what fields are being updated
-    let query = 'UPDATE clients SET ';
+    let query = 'UPDATE sgftw_reservation_submissions SET ';
     const queryParams: (string | number)[] = [];
     const updates: string[] = [];
     
@@ -41,7 +45,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     query += updates.join(', ') + ' WHERE id = ?';
     queryParams.push(Number(id));
     
-    // Execute the query using executeQuery instead of pool.query
+    // Execute the query using executeQuery
     await executeQuery(query, queryParams);
     
     return NextResponse.json({ 
