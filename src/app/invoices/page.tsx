@@ -149,7 +149,7 @@ export default function InvoicesPage() {
                 Create Invoice
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[600px] bg-white">
               <DialogHeader>
                 <DialogTitle>Create New Invoice</DialogTitle>
                 <DialogDescription>Create a new invoice for a client.</DialogDescription>
