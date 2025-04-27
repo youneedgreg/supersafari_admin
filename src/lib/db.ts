@@ -2,10 +2,10 @@ import mysql from 'mysql2/promise';
 
 // Create a connection pool instead of a single connection
 const pool = mysql.createPool({
-  host: process.env.DB_HOST!,
-  user: process.env.DB_USER!,
-  password: process.env.DB_PASSWORD!,
-  database: process.env.DB_DATABASE!,
+    host: 'superafricasafaris.com', // according to your Joomla config
+    user: 'superafrica_n3wsawas',
+    password: 'k3nY@w4!!',
+    database: 'superafrica_5aw4sn3w',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
