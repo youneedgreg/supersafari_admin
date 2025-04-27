@@ -10,7 +10,7 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   // Add connection timeout
-  connectTimeout: 10000, // 10 seconds
+  connectTimeout: 100000, // 10 seconds
   // Add SSL if connecting to a cloud database (uncomment if needed)
   // ssl: {
   //   rejectUnauthorized: true
