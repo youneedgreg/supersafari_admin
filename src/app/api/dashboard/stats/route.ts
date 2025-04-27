@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
+import { executeQuery } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
 // Define the interface for the stats result
@@ -13,8 +13,6 @@ interface StatsRow extends RowDataPacket {
 
 export async function GET() {
   try {
-    const connection = await connectDB();
-    
     // Query to get all the stats at once for better performance
     const query = `
       SELECT 
@@ -26,8 +24,8 @@ export async function GET() {
       FROM sgftw_reservation_submissions
     `;
     
-    const [rows] = await connection.query<StatsRow[]>(query);
-    connection.end();
+    // Use the executeQuery function instead of managing connections manually
+    const rows = await executeQuery(query) as StatsRow[];
     
     // Get the first row from the results
     const firstRow = rows[0];

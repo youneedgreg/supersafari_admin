@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
+import { executeQuery } from '@/lib/db';
 import { format } from 'date-fns';
 import { RowDataPacket } from 'mysql2';
 
@@ -13,8 +13,6 @@ interface ArrivalRow extends RowDataPacket {
 
 export async function GET() {
   try {
-    const connection = await connectDB();
-    
     // Current date in MySQL format
     const today = format(new Date(), 'yyyy-MM-dd');
     const nextWeek = format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
@@ -38,8 +36,8 @@ export async function GET() {
       LIMIT 3
     `;
     
-    const [rows] = await connection.query<ArrivalRow[]>(query, [today, nextWeek]);
-    connection.end();
+    // Use the executeQuery function instead of managing connections manually
+    const rows = await executeQuery(query, [today, nextWeek]) as ArrivalRow[];
     
     // Format dates to be more user-friendly
     const formattedResults = rows.map(row => ({

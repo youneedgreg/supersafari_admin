@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
+import { executeQuery } from '@/lib/db';
 import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import { RowDataPacket } from 'mysql2';
 
@@ -15,8 +15,6 @@ interface EventRow extends RowDataPacket {
 
 export async function GET() {
   try {
-    const connection = await connectDB();
-    
     // Get date range for the current month and next month for the calendar
     const today = new Date();
     const startDate = format(startOfMonth(today), 'yyyy-MM-dd');
@@ -40,8 +38,8 @@ export async function GET() {
         STR_TO_DATE(arrival_date, '%Y-%m-%d')
     `;
     
-    const [rows] = await connection.query<EventRow[]>(query, [startDate, endDate, startDate, endDate]);
-    connection.end();
+    // Use the executeQuery function instead of managing connections manually
+    const rows = await executeQuery(query, [startDate, endDate, startDate, endDate]) as EventRow[];
     
     // Normalize results for the frontend
     const formattedResults = rows.map(row => ({
