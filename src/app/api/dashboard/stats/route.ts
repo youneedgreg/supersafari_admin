@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
+
+// Define the interface for the stats result
+interface StatsRow extends RowDataPacket {
+  totalClients: number;
+  planning: number;
+  confirmed: number;
+  booked: number;
+  completed: number;
+}
 
 export async function GET() {
   try {
@@ -16,16 +26,19 @@ export async function GET() {
       FROM sgftw_reservation_submissions
     `;
     
-    const [results] = await connection.query(query);
+    const [rows] = await connection.query<StatsRow[]>(query);
     connection.end();
+    
+    // Get the first row from the results
+    const firstRow = rows[0];
     
     // Convert BigInt to Number for JSON serialization
     const stats = {
-      totalClients: Number(results[0].totalClients),
-      planning: Number(results[0].planning),
-      confirmed: Number(results[0].confirmed),
-      booked: Number(results[0].booked),
-      completed: Number(results[0].completed)
+      totalClients: Number(firstRow.totalClients),
+      planning: Number(firstRow.planning),
+      confirmed: Number(firstRow.confirmed),
+      booked: Number(firstRow.booked),
+      completed: Number(firstRow.completed)
     };
     
     return NextResponse.json(stats);
