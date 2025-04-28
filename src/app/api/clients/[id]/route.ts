@@ -4,18 +4,12 @@ import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import type { NextRequest } from 'next/server';
 
-interface RequestContext {
-  params: {
-    id: string;
-  };
-}
-
 export async function PUT(
-  request: NextRequest,
-  context: RequestContext
+  request: NextRequest, 
+  { params }: { params: { id: string } } // Extract params directly from context
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const updateData = await request.json();
 
     let query = 'UPDATE sgftw_reservation_submissions SET ';
