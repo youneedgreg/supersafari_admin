@@ -268,16 +268,18 @@ export default function Dashboard() {
   ];
 
   // Find events for the selected date
-  const selectedDateEvents = calendarEvents.filter(event => {
+  // Find events for the selected date
+const selectedDateEvents = calendarEvents && Array.isArray(calendarEvents) 
+? calendarEvents.filter(event => {
     try {
       const arrivalDate = new Date(event.arrivalDate);
       const departureDate = new Date(event.departureDate);
       return isSameDay(new Date(date!), arrivalDate) || isSameDay(new Date(date!), departureDate);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       return false;
     }
-  });
+  })
+: [];
 
   return (
     <div className="p-6">

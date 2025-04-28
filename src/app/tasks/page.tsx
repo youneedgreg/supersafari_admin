@@ -140,7 +140,7 @@ export default function TasksPage() {
                 Add New Task
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[525px]">
+            <DialogContent className="sm:max-w-[525px] bg-white">
               <DialogHeader>
                 <DialogTitle>Add New Task</DialogTitle>
                 <DialogDescription>Create a new task to keep track of your work.</DialogDescription>
