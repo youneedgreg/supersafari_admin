@@ -1,84 +1,168 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Bell, Check, Clock, Filter, MoreHorizontal, Search, User } from "lucide-react"
+import { Bell, Check, Clock, Filter, Loader2, MoreHorizontal, Search, User } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { toast } from "sonner"
 
-// Mock notifications data
-const mockNotifications = [
-  {
-    id: 1,
-    title: "Booking Confirmed",
-    message: "Flight booking for Thompson Family has been confirmed.",
-    timestamp: "2 hours ago",
-    type: "booking",
-    read: false,
-    clientId: 3,
-    clientName: "Thompson Family",
-  },
-  {
-    id: 2,
-    title: "Payment Received",
-    message: "Deposit payment of $1,500 received from Maria Garcia.",
-    timestamp: "5 hours ago",
-    type: "payment",
-    read: false,
-    clientId: 4,
-    clientName: "Maria Garcia",
-  },
-  {
-    id: 3,
-    title: "Task Due Soon",
-    message: "Task 'Confirm hotel for Smith couple' is due in 2 days.",
-    timestamp: "1 day ago",
-    type: "task",
-    read: false,
-    clientId: 1,
-    clientName: "John & Sarah Smith",
-  },
-  {
-    id: 4,
-    title: "New Reservation",
-    message: "New reservation request from Chen Family.",
-    timestamp: "2 days ago",
-    type: "reservation",
-    read: true,
-    clientId: 5,
-    clientName: "Chen Family",
-  },
-  {
-    id: 5,
-    title: "Client Arrival Reminder",
-    message: "David Williams will be arriving in 3 days.",
-    timestamp: "3 days ago",
-    type: "reminder",
-    read: true,
-    clientId: 2,
-    clientName: "David Williams",
-  },
-  {
-    id: 6,
-    title: "Invoice Sent",
-    message: "Invoice #1234 has been sent to Thompson Family.",
-    timestamp: "4 days ago",
-    type: "invoice",
-    read: true,
-    clientId: 3,
-    clientName: "Thompson Family",
-  },
-]
+// Define types
+interface Notification {
+  id: number
+  title: string
+  message: string
+  timestamp: string
+  type: string
+  read: boolean
+  clientId: number | null
+  clientName: string | null
+}
 
 export default function NotificationsPage() {
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [markingAllRead, setMarkingAllRead] = useState(false)
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/notifications")
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch notifications")
+      }
+      
+      const data = await response.json()
+      setNotifications(data)
+    } catch (error) {
+      console.error("Error fetching notifications:", error)
+      toast.error("Failed to load notifications", {
+        description: "There was an error loading your notifications. Please try again.",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  // Mark a notification as read or unread
+  const handleToggleRead = async (notification: Notification) => {
+    try {
+      const newReadStatus = !notification.read
+      
+      const response = await fetch("/api/notifications", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: notification.id,
+          read: newReadStatus
+        }),
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to mark notification as ${newReadStatus ? 'read' : 'unread'}`)
+      }
+      
+      toast.success(`Notification marked as ${newReadStatus ? 'read' : 'unread'}`)
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === notification.id 
+            ? { ...n, read: newReadStatus } 
+            : n
+        )
+      )
+    } catch (error) {
+      console.error("Error updating notification:", error)
+      toast.error(`Failed to mark notification as ${!notification.read ? 'read' : 'unread'}`, {
+        description: "There was an error updating the notification. Please try again.",
+      })
+    }
+  }
+
+  // Mark all notifications as read
+  const handleMarkAllAsRead = async () => {
+    try {
+      setMarkingAllRead(true)
+      
+      const response = await fetch("/api/notifications", {
+        method: "PATCH"
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to mark all notifications as read")
+      }
+      
+      toast.success("All notifications marked as read")
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => ({ ...n, read: true }))
+      )
+    } catch (error) {
+      console.error("Error marking all as read:", error)
+      toast.error("Failed to mark all as read", {
+        description: "There was an error updating notifications. Please try again.",
+      })
+    } finally {
+      setMarkingAllRead(false)
+    }
+  }
+
+  // Delete a notification
+  const handleDeleteNotification = async (id: number) => {
+    try {
+      const response = await fetch(`/api/notifications?id=${id}`, {
+        method: "DELETE",
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to delete notification")
+      }
+      
+      toast.success("Notification deleted")
+      
+      // Update local state
+      setNotifications(prev => prev.filter(n => n.id !== id))
+    } catch (error) {
+      console.error("Error deleting notification:", error)
+      toast.error("Failed to delete notification", {
+        description: "There was an error deleting the notification. Please try again.",
+      })
+    }
+  }
+
+  // View notification details
+  const handleViewDetails = (notification: Notification) => {
+    // Mark as read if unread
+    if (!notification.read) {
+      handleToggleRead(notification)
+    }
+    
+    // Show details in a toast for now
+    // In a real application, you could navigate to a details page or show a modal
+    toast.info(notification.title, {
+      description: notification.message,
+      duration: 5000,
+    })
+  }
 
   // Filter notifications based on active tab and search query
-  const filteredNotifications = mockNotifications.filter((notification) => {
+  const filteredNotifications = notifications.filter((notification) => {
     // Filter by tab
     if (activeTab === "unread" && notification.read) return false
     if (activeTab === "read" && !notification.read) return false
@@ -88,7 +172,7 @@ export default function NotificationsPage() {
     return (
       notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       notification.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      notification.clientName.toLowerCase().includes(searchQuery.toLowerCase())
+      (notification.clientName && notification.clientName.toLowerCase().includes(searchQuery.toLowerCase()))
     )
   })
 
@@ -112,6 +196,9 @@ export default function NotificationsPage() {
     }
   }
 
+  // Check if there are unread notifications
+  const hasUnreadNotifications = notifications.some(n => !n.read)
+
   return (
     <div className="p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -120,8 +207,16 @@ export default function NotificationsPage() {
           <p className="text-gray-500 mt-1">Stay updated with system notifications</p>
         </div>
         <div className="mt-4 md:mt-0 space-x-2">
-          <Button variant="outline">
-            <Check className="mr-2 h-4 w-4" />
+          <Button 
+            variant="outline" 
+            onClick={handleMarkAllAsRead}
+            disabled={markingAllRead || !hasUnreadNotifications}
+          >
+            {markingAllRead ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="mr-2 h-4 w-4" />
+            )}
             Mark All as Read
           </Button>
         </div>
@@ -154,7 +249,12 @@ export default function NotificationsPage() {
 
         {/* Notification list */}
         <TabsContent value={activeTab} className="space-y-4">
-          {filteredNotifications.length === 0 ? (
+          {loading ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+              <span className="ml-2 text-gray-500">Loading notifications...</span>
+            </div>
+          ) : filteredNotifications.length === 0 ? (
             <div className="text-center py-10">
               <p className="text-gray-500">No notifications found</p>
             </div>
@@ -187,12 +287,23 @@ export default function NotificationsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-white">
                               {notification.read ? (
-                                <DropdownMenuItem>Mark as Unread</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleToggleRead(notification)}>
+                                  Mark as Unread
+                                </DropdownMenuItem>
                               ) : (
-                                <DropdownMenuItem>Mark as Read</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleToggleRead(notification)}>
+                                  Mark as Read
+                                </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem>View Details</DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewDetails(notification)}>
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-red-600" 
+                                onClick={() => handleDeleteNotification(notification.id)}
+                              >
+                                Delete
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
