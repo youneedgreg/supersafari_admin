@@ -9,7 +9,8 @@ import {
   ClipboardList, 
   Clock, 
   Plus, 
-  Users
+  Users,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,9 +35,14 @@ interface Arrival {
 }
 
 interface Task {
+  id: number;
   title: string;
-  due: string;
+  description: string;
+  dueDate: string;
   priority: string;
+  status: string;
+  clientId: number | null;
+  clientName: string | null;
 }
 
 interface CalendarEvent {
@@ -218,7 +224,9 @@ export default function Dashboard() {
   });
   const [upcomingArrivals, setUpcomingArrivals] = useState<Arrival[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(true);
 
   useEffect(() => {
     // Fetch dashboard stats
@@ -251,12 +259,53 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  // Hardcoded pending tasks for now
-  const pendingTasks = [
-    { title: "Book flight for Thompson Family", due: "May 10, 2023", priority: "High" },
-    { title: "Send invoice to David Williams", due: "May 8, 2023", priority: "Medium" },
-    { title: "Confirm hotel for Smith couple", due: "May 9, 2023", priority: "High" },
-  ];
+  // Fetch tasks separately
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        setTasksLoading(true);
+        const response = await fetch('/api/tasks');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch tasks');
+        }
+        
+        const data = await response.json();
+        
+        // Filter only pending tasks and sort by priority 
+        // (high priority first, then by due date)
+        const filteredTasks = data
+          .filter((task: Task) => task.status === 'pending')
+          .sort((a: Task, b: Task) => {
+            // First sort by priority
+            const priorityOrder: Record<string, number> = { 
+              high: 1, 
+              medium: 2, 
+              low: 3 
+            };
+            
+            const priorityDiff = priorityOrder[a.priority.toLowerCase()] - 
+                               priorityOrder[b.priority.toLowerCase()];
+            
+            if (priorityDiff !== 0) return priorityDiff;
+            
+            // If same priority, sort by due date
+            const dateA = new Date(a.dueDate);
+            const dateB = new Date(b.dueDate);
+            return dateA.getTime() - dateB.getTime();
+          })
+          .slice(0, 3); // Only take the top 3 tasks
+        
+        setPendingTasks(filteredTasks);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      } finally {
+        setTasksLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, []);
 
   // The Stats array for the cards
   const statsCards = [
@@ -267,19 +316,32 @@ export default function Dashboard() {
     { title: "Completed", value: stats.completed, icon: Users, color: "bg-emerald-100 text-emerald-600" },
   ];
 
-  // Find events for the selected date
-  // Find events for the selected date
-const selectedDateEvents = calendarEvents && Array.isArray(calendarEvents) 
-? calendarEvents.filter(event => {
-    try {
-      const arrivalDate = new Date(event.arrivalDate);
-      const departureDate = new Date(event.departureDate);
-      return isSameDay(new Date(date!), arrivalDate) || isSameDay(new Date(date!), departureDate);
-    } catch (e) {
-      return false;
+  // Get priority badge color
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case "high":
+        return "bg-red-100 text-red-800 hover:bg-red-100"
+      case "medium":
+        return "bg-amber-100 text-amber-800 hover:bg-amber-100"
+      case "low":
+        return "bg-blue-100 text-blue-800 hover:bg-blue-100"
+      default:
+        return "bg-gray-100 text-gray-800 hover:bg-gray-100"
     }
-  })
-: [];
+  }
+
+  // Find events for the selected date
+  const selectedDateEvents = calendarEvents && Array.isArray(calendarEvents) 
+    ? calendarEvents.filter(event => {
+        try {
+          const arrivalDate = new Date(event.arrivalDate);
+          const departureDate = new Date(event.departureDate);
+          return isSameDay(new Date(date!), arrivalDate) || isSameDay(new Date(date!), departureDate);
+        } catch (e) {
+          return false;
+        }
+      })
+    : [];
 
   return (
     <div className="p-6">
@@ -453,28 +515,37 @@ const selectedDateEvents = calendarEvents && Array.isArray(calendarEvents)
           </Link>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {pendingTasks.map((task, index) => (
-              <div key={index} className="flex items-center justify-between border-b pb-3 last:border-0">
-                <div>
-                  <p className="font-medium">{task.title}</p>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Clock className="mr-1 h-3 w-3" />
-                    Due: {task.due}
+          {tasksLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-green-600 mr-2" />
+              <span className="text-gray-500">Loading tasks...</span>
+            </div>
+          ) : pendingTasks.length > 0 ? (
+            <div className="space-y-4">
+              {pendingTasks.map((task) => (
+                <div key={task.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                  <div>
+                    <p className="font-medium">{task.title}</p>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <Clock className="mr-1 h-3 w-3" />
+                      Due: {task.dueDate}
+                      {task.clientName && (
+                        <>
+                          <span className="mx-1">•</span>
+                          <span>Client: {task.clientName}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
+                  <Badge className={getPriorityColor(task.priority)}>
+                    {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                  </Badge>
                 </div>
-                <Badge
-                  className={
-                    task.priority === "High"
-                      ? "bg-red-100 text-red-800 hover:bg-red-100"
-                      : "bg-amber-100 text-amber-800 hover:bg-amber-100"
-                  }
-                >
-                  {task.priority}
-                </Badge>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-gray-500">No pending tasks</div>
+          )}
         </CardContent>
       </Card>
     </div>
