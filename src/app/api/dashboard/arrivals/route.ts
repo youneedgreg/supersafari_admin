@@ -31,6 +31,7 @@ export async function GET() {
         status IN ('confirmed', 'booked') 
         AND STR_TO_DATE(arrival_date, '%Y-%m-%d') >= ?
         AND STR_TO_DATE(arrival_date, '%Y-%m-%d') <= ?
+        AND departure_date IS NOT NULL
       ORDER BY 
         STR_TO_DATE(arrival_date, '%Y-%m-%d') ASC
       LIMIT 3

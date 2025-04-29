@@ -22,6 +22,10 @@ export async function GET() {
         SUM(CASE WHEN status = 'booked' THEN 1 ELSE 0 END) as booked,
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
       FROM sgftw_reservation_submissions
+      WHERE 
+       departure_date IS NOT NULL
+        AND departure_date != ''
+      
     `;
     
     // Use the executeQuery function instead of managing connections manually

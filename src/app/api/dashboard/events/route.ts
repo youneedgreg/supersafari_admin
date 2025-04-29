@@ -34,6 +34,10 @@ export async function GET() {
       WHERE 
         (STR_TO_DATE(arrival_date, '%Y-%m-%d') BETWEEN ? AND ?) 
         OR (STR_TO_DATE(departure_date, '%Y-%m-%d') BETWEEN ? AND ?)
+        AND departure_date IS NOT NULL
+        AND departure_date != ''
+        AND arrival_date IS NOT NULL
+        AND arrival_date != ''
       ORDER BY 
         STR_TO_DATE(arrival_date, '%Y-%m-%d')
     `;
