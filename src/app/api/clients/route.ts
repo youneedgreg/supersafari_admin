@@ -35,11 +35,11 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     
     // Build the query based on filters
-    let query = 'SELECT * FROM sgftw_reservation_submissions';
+    let query = 'SELECT * FROM sgftw_reservation_submissions WHERE arrival_date IS NOT NULL AND departure_date IS NOT NULL AND arrival_date != "" AND departure_date != ""';
     const queryParams: (string | number)[] = [];
     
     if (status) {
-      query += ' WHERE status = ?';
+      query += ' AND status = ?';
       queryParams.push(status);
       
       if (search) {
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         queryParams.push(`%${search}%`);
       }
     } else if (search) {
-      query += ' WHERE name LIKE ? OR email LIKE ?';
+      query += ' AND (name LIKE ? OR email LIKE ?)';
       queryParams.push(`%${search}%`);
       queryParams.push(`%${search}%`);
     }
@@ -88,6 +88,14 @@ export async function POST(request: NextRequest) {
     
     // Current date for submission_date
     const submissionDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    
+    // Validate that both arrival and departure dates are provided
+    if (!clientData.arrival || !clientData.departure) {
+      return NextResponse.json({
+        status: 'ERROR',
+        message: 'Both arrival and departure dates are required'
+      }, { status: 400 });
+    }
     
     // SQL to insert a new client
     const query = `
