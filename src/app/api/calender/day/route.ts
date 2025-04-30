@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const date = format(parseISO(dateParam), 'yyyy-MM-dd');
     
     // Initialize array for day events
-    let events: DayEvent[] = [];
+    const events: DayEvent[] = [];
     
     // Fetch reservations with arrival or departure on this day
     const reservationQuery = `
