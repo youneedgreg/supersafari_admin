@@ -1,3 +1,4 @@
+// app/api/dashboard/events/route.ts
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns';
@@ -32,7 +33,7 @@ export async function GET() {
       FROM 
         sgftw_reservation_submissions
       WHERE 
-        (STR_TO_DATE(arrival_date, '%Y-%m-%d') BETWEEN ? AND ?) 
+        (STR_TO_DATE(arrival_date, '%Y-%m-%d') BETWEEN ? AND ?)
         OR (STR_TO_DATE(departure_date, '%Y-%m-%d') BETWEEN ? AND ?)
         AND departure_date IS NOT NULL
         AND departure_date != ''
