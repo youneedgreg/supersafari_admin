@@ -10,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -124,7 +123,7 @@ export default function EventCreationDialog({
       setIsSubmitting(true)
       
       // Construct the event data based on the active tab
-      let eventData: Record<string, any> = {}
+      let eventData: Record<string, unknown> = {}
       
       if (activeTab === "arrival") {
         eventData = {
@@ -311,7 +310,7 @@ export default function EventCreationDialog({
                           mode="single"
                           selected={departureDate}
                           onSelect={setDepartureDate}
-                          disabled={(currentDate) => currentDate < (date || new Date())}
+                          disabled={(currentDate: Date) => currentDate < (date || new Date())}
                           initialFocus
                         />
                       </PopoverContent>
