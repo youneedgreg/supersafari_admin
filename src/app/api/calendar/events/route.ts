@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
     const result = await executeQuery(query, values);
     
     // Extract the insert ID
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const insertId = (result as any)?.insertId;
     
     return NextResponse.json({

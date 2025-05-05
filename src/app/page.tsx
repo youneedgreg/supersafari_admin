@@ -244,11 +244,6 @@ export default function Dashboard() {
         const arrivalsData = await arrivalsResponse.json();
         setUpcomingArrivals(arrivalsData);
         
-        // Fetch calendar events (arrivals and departures)
-        const eventsResponse = await fetch('/api/dashboard/events');
-        const eventsData = await eventsResponse.json();
-        setCalendarEvents(eventsData);
-        
         setLoading(false);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -258,6 +253,22 @@ export default function Dashboard() {
     
     fetchData();
   }, []);
+
+  // Fetch calendar events for the dashboard
+useEffect(() => {
+  const fetchEvents = async () => {
+    try {
+      const response = await fetch('/api/dashboard/events');
+      if (!response.ok) throw new Error('Failed to fetch calendar events');
+      const data = await response.json();
+      setCalendarEvents(data);
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
+    }
+  };
+  
+  fetchEvents();
+}, []);
 
   // Fetch tasks separately
   useEffect(() => {
