@@ -19,7 +19,7 @@ interface EventRow extends RowDataPacket {
   totalGuests?: number;
   adults?: number;
   children?: number;
-  client_id?: number;
+  id?: number;
   client_name?: string;
 }
 
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
           'reservation' as event_type,
           COALESCE(adults, 0) as adults,
           COALESCE(children, 0) as children,
-          client_id
+          id
         FROM
           sgftw_reservation_submissions
         WHERE
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
             type: 'arrival',
             status: row.status,
             details: `${totalGuests} guest${totalGuests !== 1 ? 's' : ''}`,
-            clientId: row.client_id ? Number(row.client_id) : null,
+            clientId: row.id ? Number(row.id) : null,
             clientName: row.name,
             totalGuests
           });
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
             type: 'departure',
             status: row.status,
             details: `${totalGuests} guest${totalGuests !== 1 ? 's' : ''}`,
-            clientId: row.client_id ? Number(row.client_id) : null,
+            clientId: row.id ? Number(row.id) : null,
             clientName: row.name,
             totalGuests
           });
@@ -135,12 +135,12 @@ export async function GET(request: NextRequest) {
           t.priority,
           t.status,
           'task' as event_type,
-          t.client_id,
+          t.id,
           c.name as client_name
         FROM
           sgftw_tasks t
         LEFT JOIN
-          sgftw_clients c ON t.client_id = c.id
+          sgftw_reservation_submissions c ON t.id = c.id
         WHERE
           STR_TO_DATE(t.due_date, '%Y-%m-%d') BETWEEN ? AND ?
         ORDER BY
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
           type: 'task',
           status: row.status,
           details: row.client_name ? `Client: ${row.client_name}` : row.description || '',
-          clientId: row.client_id ? Number(row.client_id) : null,
+          clientId: row.id ? Number(row.id) : null,
           clientName: row.client_name || null
         });
       }

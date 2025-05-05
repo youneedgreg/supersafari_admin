@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       
       // Format reservation data properly
       insertData = {
-        client_id: dataToInsert.client_id,
+        id: dataToInsert.id,
         name: dataToInsert.name || null, // Will be fetched from client if not provided
         arrival_date: type === 'arrival' ? dataToInsert.arrival_date : null,
         departure_date: type === 'departure' ? dataToInsert.departure_date : 
@@ -29,10 +29,10 @@ export async function POST(request: NextRequest) {
         created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
       };
       
-      // If we don't have a name but have a client_id, fetch the client name
-      if (!insertData.name && insertData.client_id) {
-        const clientQuery = 'SELECT name FROM sgftw_clients WHERE id = ?';
-        const clientResult = await executeQuery(clientQuery, [insertData.client_id]);
+      // If we don't have a name but have a id, fetch the client name
+      if (!insertData.name && insertData.id) {
+        const clientQuery = 'SELECT name FROM sgftw_reservation_submissions WHERE id = ?';
+        const clientResult = await executeQuery(clientQuery, [insertData.id]);
         
         if (Array.isArray(clientResult) && clientResult.length > 0) {
           insertData.name = clientResult[0].name;
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         due_date: dataToInsert.due_date,
         priority: dataToInsert.priority || 'medium',
         status: dataToInsert.status || 'pending',
-        client_id: dataToInsert.client_id || null,
+        id: dataToInsert.id || null,
         created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
         created_by: 1 // Default to admin user or system
       };

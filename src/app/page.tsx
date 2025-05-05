@@ -467,7 +467,7 @@ useEffect(() => {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
               <CardTitle>Upcoming Arrivals</CardTitle>
-              <CardDescription>Guests arriving in the next 7 days</CardDescription>
+              <CardDescription>Guests arriving in the next 30 days</CardDescription>
             </div>
             <Link href="/clients">
               <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
