@@ -101,12 +101,35 @@ export default function EventCreationDialog({
       try {
         setIsLoadingClients(true)
         const response = await fetch('/api/clients')
-        if (!response.ok) throw new Error('Failed to fetch clients')
+        if (!response.ok) {
+          throw new Error(`Failed to fetch clients: ${response.status} ${response.statusText}`)
+        }
         
         const data = await response.json()
-        setClients(data)
+        console.log('API response:', data)
+        console.log('Type of response:', typeof data)
+        console.log('Is array?', Array.isArray(data))
+        
+        // Handle different possible response formats
+        let clientsArray: Client[] = []
+        
+        if (Array.isArray(data)) {
+          clientsArray = data
+        } else if (data && Array.isArray(data.clients)) {
+          // Check if response has a clients property that's an array
+          clientsArray = data.clients
+        } else if (data && Array.isArray(data.data)) {
+          // Check if response has a data property that's an array
+          clientsArray = data.data
+        } else {
+          console.error('API response is not in expected format:', data)
+          throw new Error('API response format is not supported')
+        }
+        
+        setClients(clientsArray)
       } catch (error) {
         console.error('Error fetching clients:', error)
+        setClients([]) // Set empty array on error
       } finally {
         setIsLoadingClients(false)
       }
@@ -189,7 +212,7 @@ export default function EventCreationDialog({
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent className="sm:max-w-[550px] bg-white">
         <DialogHeader>
           <DialogTitle>Create New Event</DialogTitle>
           <DialogDescription>
@@ -258,13 +281,17 @@ export default function EventCreationDialog({
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select a client" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       <SelectGroup>
                         <SelectLabel>Clients</SelectLabel>
                         {isLoadingClients ? (
                           <div className="flex items-center justify-center p-2">
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             Loading...
+                          </div>
+                        ) : clients.length === 0 ? (
+                          <div className="px-2 py-1 text-sm text-gray-500">
+                            No clients available
                           </div>
                         ) : (
                           <>
@@ -343,7 +370,7 @@ export default function EventCreationDialog({
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white">
                         <SelectItem value="planning">Planning</SelectItem>
                         <SelectItem value="confirmed">Confirmed</SelectItem>
                         <SelectItem value="booked">Booked</SelectItem>
@@ -366,7 +393,7 @@ export default function EventCreationDialog({
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white">
                         <SelectItem value="planning">Planning</SelectItem>
                         <SelectItem value="confirmed">Confirmed</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>

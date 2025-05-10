@@ -378,7 +378,7 @@ export default function TasksPage() {
                       <SelectTrigger id="task-client">
                         <SelectValue placeholder="Select client" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white">
                         {clients.map((client) => (
                           <SelectItem key={client.id} value={client.id.toString()}>
                             {client.name}
@@ -457,7 +457,7 @@ export default function TasksPage() {
                         <SelectTrigger id="edit-task-priority">
                           <SelectValue placeholder="Select priority" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white">
                           <SelectItem value="high">High</SelectItem>
                           <SelectItem value="medium">Medium</SelectItem>
                           <SelectItem value="low">Low</SelectItem>
@@ -473,7 +473,7 @@ export default function TasksPage() {
                         <SelectTrigger id="edit-task-client">
                           <SelectValue placeholder="Select client" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white">
                           {clients.map((client) => (
                             <SelectItem key={client.id} value={client.id.toString()}>
                               {client.name}
