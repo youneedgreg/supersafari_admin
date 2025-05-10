@@ -40,6 +40,15 @@ interface Client {
   name: string
 }
 
+interface ClientDetails {
+  id: number
+  name: string
+  arrival_date?: string
+  departure_date?: string
+  guests?: number
+  status?: string
+}
+
 interface EventCreationProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
@@ -70,6 +79,8 @@ export default function EventCreationDialog({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [clients, setClients] = useState<Client[]>([])
   const [isLoadingClients, setIsLoadingClients] = useState<boolean>(false)
+  const [isLoadingClientDetails, setIsLoadingClientDetails] = useState<boolean>(false)
+  const [, setClientDetails] = useState<ClientDetails | null>(null)
   
   // Reset form when dialog opens
   useEffect(() => {
@@ -81,6 +92,7 @@ export default function EventCreationDialog({
       setStatus("planning")
       setPriority("medium")
       setGuests("1")
+      setClientDetails(null)
       
       // Set default departure date (7 days from arrival)
       if (activeTab === "arrival") {
@@ -137,6 +149,64 @@ export default function EventCreationDialog({
     
     fetchClients()
   }, [isOpen])
+  
+  // Fetch client details when a client is selected
+  useEffect(() => {
+    const fetchClientDetails = async () => {
+      if (!clientId) {
+        setClientDetails(null)
+        return
+      }
+      
+      try {
+        setIsLoadingClientDetails(true)
+        const response = await fetch(`/api/clients/${clientId}`)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch client details: ${response.status} ${response.statusText}`)
+        }
+        
+        const data = await response.json()
+        console.log('Client details:', data)
+        
+        // Auto-fill the form with client data
+        if (data) {
+          setClientDetails(data)
+          
+          // Auto-fill arrival date if it exists
+          if (data.arrival_date) {
+            const arrivalDate = new Date(data.arrival_date)
+            if (!isNaN(arrivalDate.getTime())) {
+              setDate(arrivalDate)
+            }
+          }
+          
+          // Auto-fill departure date if it exists
+          if (data.departure_date) {
+            const depDate = new Date(data.departure_date)
+            if (!isNaN(depDate.getTime())) {
+              setDepartureDate(depDate)
+            }
+          }
+          
+          // Auto-fill number of guests if it exists
+          if (data.guests) {
+            setGuests(data.guests.toString())
+          }
+          
+          // Auto-fill status if it exists
+          if (data.status) {
+            setStatus(data.status)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching client details:', error)
+      } finally {
+        setIsLoadingClientDetails(false)
+      }
+    }
+    
+    fetchClientDetails()
+  }, [clientId])
   
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -235,6 +305,57 @@ export default function EventCreationDialog({
           <form onSubmit={handleSubmit}>
             {/* Common Fields for All Types */}
             <div className="grid gap-4 py-4">
+              {/* Client Selection */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="client" className="text-right">
+                  Client
+                </Label>
+                <div className="col-span-3">
+                  <div className="relative">
+                    <Select
+                      value={clientId}
+                      onValueChange={setClientId}
+                      disabled={isLoadingClients}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a client" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectGroup>
+                          <SelectLabel>Clients</SelectLabel>
+                          {isLoadingClients ? (
+                            <div className="flex items-center justify-center p-2">
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Loading...
+                            </div>
+                          ) : clients.length === 0 ? (
+                            <div className="px-2 py-1 text-sm text-gray-500">
+                              No clients available
+                            </div>
+                          ) : (
+                            <>
+                              {activeTab === "task" && (
+                                <SelectItem value="">No client (general task)</SelectItem>
+                              )}
+                              {clients.map((client) => (
+                                <SelectItem key={client.id} value={client.id.toString()}>
+                                  {client.name}
+                                </SelectItem>
+                              ))}
+                            </>
+                          )}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {isLoadingClientDetails && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
               {/* Date Field */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="event-date" className="text-right">
@@ -255,7 +376,7 @@ export default function EventCreationDialog({
                         {date ? format(date, "PPP") : "Select date"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0 bg-white" align="start">
                       <Calendar
                         mode="single"
                         selected={date}
@@ -264,50 +385,6 @@ export default function EventCreationDialog({
                       />
                     </PopoverContent>
                   </Popover>
-                </div>
-              </div>
-              
-              {/* Client Selection */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="client" className="text-right">
-                  Client
-                </Label>
-                <div className="col-span-3">
-                  <Select
-                    value={clientId}
-                    onValueChange={setClientId}
-                    disabled={isLoadingClients}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a client" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectGroup>
-                        <SelectLabel>Clients</SelectLabel>
-                        {isLoadingClients ? (
-                          <div className="flex items-center justify-center p-2">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Loading...
-                          </div>
-                        ) : clients.length === 0 ? (
-                          <div className="px-2 py-1 text-sm text-gray-500">
-                            No clients available
-                          </div>
-                        ) : (
-                          <>
-                            {activeTab === "task" && (
-                              <SelectItem value="">No client (general task)</SelectItem>
-                            )}
-                            {clients.map((client) => (
-                              <SelectItem key={client.id} value={client.id.toString()}>
-                                {client.name}
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
               
@@ -332,7 +409,7 @@ export default function EventCreationDialog({
                           {departureDate ? format(departureDate, "PPP") : "Select date"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 bg-white" align="start">
                         <Calendar
                           mode="single"
                           selected={departureDate}
