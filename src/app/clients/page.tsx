@@ -513,6 +513,7 @@ export default function ClientsPage() {
                           <DropdownMenuContent align="end" className="bg-white">
                             <DropdownMenuItem>Edit Details</DropdownMenuItem>
                             <DropdownMenuItem>Send Email</DropdownMenuItem>
+                            <DropdownMenuItem>Send itenary</DropdownMenuItem>
                             <DropdownMenuItem>Generate Invoice</DropdownMenuItem>
                             {client.status === "planning" && (
                               <DropdownMenuItem onClick={() => handleChangeStatus(client.id, "confirmed")}>
