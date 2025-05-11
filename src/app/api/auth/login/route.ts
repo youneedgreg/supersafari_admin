@@ -51,8 +51,9 @@ export async function POST(request: Request) {
       [user.id, request.headers.get('x-forwarded-for') || 'unknown', request.headers.get('user-agent') || 'unknown']
     );
 
-    // Set cookie
-    cookies().set('auth_token', token, {
+    // Set cookie - await the cookies() call
+    const cookieStore = await cookies();
+    cookieStore.set('auth_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -77,4 +78,4 @@ export async function POST(request: Request) {
       error: error.message 
     }, { status: 500 });
   }
-} 
+}
