@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Calendar, ChevronLeft, ClipboardList, CreditCard, Home, Mail, Menu, MessageSquare, Users } from "lucide-react"
+import { useState, useEffect } from "react"
 
 const navItems = [
   {
@@ -43,11 +44,35 @@ const navItems = [
     href: "/notes",
     icon: MessageSquare,
   },
+  {
+    title: "Logs",
+    href: "/logs",
+    icon: ClipboardList,
+    adminOnly: true,
+  },
 ]
 
 export default function Sidebar() {
   const { isOpen, toggle } = useSidebar()
   const pathname = usePathname()
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/check')
+        const data = await response.json()
+        
+        if (data.status === 'OK') {
+          setUserRole(data.user.role)
+        }
+      } catch (error) {
+        console.error('Failed to check auth:', error)
+      }
+    }
+    
+    checkAuth()
+  }, [])
 
   return (
     <>
@@ -77,23 +102,30 @@ export default function Sidebar() {
           </div>
 
           {/* Sidebar content */}
-          <div className="flex-1 overflow-auto py-4">
+          <div className="flex-1 overflow-y-auto">
             <nav className="space-y-1 px-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center px-4 py-3 text-sm font-medium rounded-md transition-colors",
-                    pathname === item.href
-                      ? "bg-green-100 text-green-700"
-                      : "text-gray-700 hover:bg-green-50 hover:text-green-600",
-                  )}
-                >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.title}
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                // Skip admin-only items if user is not admin
+                if (item.adminOnly && userRole !== 'admin') {
+                  return null
+                }
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center px-4 py-3 text-sm font-medium rounded-md transition-colors",
+                      pathname === item.href
+                        ? "bg-green-100 text-green-700"
+                        : "text-gray-700 hover:bg-green-50 hover:text-green-600",
+                    )}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.title}
+                  </Link>
+                )
+              })}
             </nav>
           </div>
 

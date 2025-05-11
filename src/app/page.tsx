@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays, parseISO } from 'date-fns';
+import { useRouter } from 'next/navigation'
 
 // Types for our data
 interface DashboardStats {
@@ -214,6 +215,7 @@ const CustomCalendar: React.FC<CustomCalendarProps> = ({
 };
 
 export default function Dashboard() {
+  const router = useRouter()
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [stats, setStats] = useState<DashboardStats>({
     totalClients: 0,
@@ -227,6 +229,27 @@ export default function Dashboard() {
   const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [tasksLoading, setTasksLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check authentication
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/check')
+        const data = await response.json()
+        
+        if (data.status === 'OK') {
+          setUserRole(data.user.role)
+        } else {
+          router.push('/login')
+        }
+      } catch (error) {
+        router.push('/login')
+      }
+    }
+    
+    checkAuth()
+  }, [router])
 
   useEffect(() => {
     // Fetch dashboard stats
@@ -366,6 +389,14 @@ useEffect(() => {
             <Clock className="mr-2 h-4 w-4" />
             View Reports
           </Button>
+          {userRole === 'admin' && (
+            <Link href="/logs">
+              <Button variant="outline">
+                <ClipboardList className="mr-2 h-4 w-4" />
+                View Logs
+              </Button>
+            </Link>
+          )}
           <Button className="bg-green-600 hover:bg-green-700">
             <Plus className="mr-2 h-4 w-4" />
             New Reservation
