@@ -6,38 +6,54 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export async function GET() {
   try {
-    // Get auth token from cookies - with await added
+    // Get auth token from cookies
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
     
+    console.log('Auth check - Cookie store:', await cookieStore.getAll());
+    console.log('Auth check - Token present:', !!token);
+    
     if (!token) {
+      console.log('Auth check - No token found in cookies');
       return NextResponse.json({
         status: 'ERROR',
-        message: 'Unauthorized'
+        message: 'No authentication token found',
+        details: 'The auth_token cookie is missing'
       }, { status: 401 });
     }
     
     // Verify token
-    const decoded = verify(token, JWT_SECRET) as {
-      userId: number;
-      email: string;
-      role: string;
-    };
-    
-    return NextResponse.json({
-      status: 'OK',
-      user: {
-        id: decoded.userId,
-        email: decoded.email,
-        role: decoded.role
-      }
-    });
-  } catch (error: any) {
-    console.error('Auth check error:', error);
+    try {
+      const decoded = verify(token, JWT_SECRET) as {
+        userId: number;
+        email: string;
+        role: string;
+      };
+      
+      console.log('Auth check - Token verified successfully:', { userId: decoded.userId, email: decoded.email, role: decoded.role });
+      
+      return NextResponse.json({
+        status: 'OK',
+        user: {
+          id: decoded.userId,
+          email: decoded.email,
+          role: decoded.role
+        }
+      });
+    } catch (verifyError) {
+      console.error('Auth check - Token verification failed:', verifyError);
+      return NextResponse.json({
+        status: 'ERROR',
+        message: 'Invalid authentication token',
+        details: verifyError instanceof Error ? verifyError.message : 'Token verification failed'
+      }, { status: 401 });
+    }
+  } catch (error) {
+    console.error('Auth check - Unexpected error:', error);
     return NextResponse.json({
       status: 'ERROR',
-      message: 'Unauthorized',
-      error: error.message
+      message: 'Authentication check failed',
+      details: error instanceof Error ? error.message : 'An unexpected error occurred'
     }, { status: 401 });
   }
 }

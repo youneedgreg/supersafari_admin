@@ -27,6 +27,7 @@ export default function LoginPage() {
     const checkAuth = async () => {
       setCheckingAuth(true)
       try {
+        console.log('Checking authentication...')
         const response = await fetch('/api/auth/check', {
           method: 'GET',
           headers: {
@@ -35,27 +36,33 @@ export default function LoginPage() {
           credentials: 'include'
         })
         
+        console.log('Auth check response status:', response.status)
+        
         // Check if the response is actually JSON
         const contentType = response.headers.get('content-type')
+        console.log('Response content type:', contentType)
+        
         if (!contentType || !contentType.includes('application/json')) {
-          // Not a JSON response, probably a redirect or HTML page
+          console.log('Not a JSON response')
           setCheckingAuth(false)
           return
         }
         
         if (!response.ok) {
+          const errorData = await response.json()
+          console.log('Auth check failed:', errorData)
           setCheckingAuth(false)
           return
         }
         
         const data = await response.json()
+        console.log('Auth check successful:', data)
         if (data.status === 'OK') {
           toast.success('Already logged in')
           router.push('/')
         }
       } catch (error) {
-        // Not logged in or error occurred, stay on login page
-        console.log('Auth check error:', error)
+        console.error('Auth check error:', error)
       } finally {
         setCheckingAuth(false)
       }
@@ -74,6 +81,8 @@ export default function LoginPage() {
         throw new Error('Please fill in all fields')
       }
 
+      console.log('Attempting login for:', { email: formData.email, role: formData.role })
+      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -84,13 +93,19 @@ export default function LoginPage() {
         body: JSON.stringify(formData)
       })
 
+      console.log('Login response status:', response.status)
+      console.log('Login response headers:', Object.fromEntries(response.headers.entries()))
+
       // Check if the response is JSON
       const contentType = response.headers.get('content-type')
+      console.log('Login response content type:', contentType)
+      
       if (!contentType || !contentType.includes('application/json')) {
         throw new Error('Invalid response format')
       }
 
       const data = await response.json()
+      console.log('Login response data:', data)
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -100,6 +115,10 @@ export default function LoginPage() {
       }
 
       if (data.status === 'OK') {
+        console.log('Login successful, checking cookies...')
+        // Log all cookies
+        console.log('Document cookies:', document.cookie)
+        
         toast.success('Login successful! Redirecting...')
         // Small delay to show the success message before redirect
         setTimeout(() => {

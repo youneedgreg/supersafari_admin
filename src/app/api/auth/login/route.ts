@@ -85,16 +85,17 @@ export async function POST(request: Request) {
       }
     }, {
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Set-Cookie': `auth_token=${token}; HttpOnly; Path=/; Max-Age=${60 * 60 * 24}; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
       }
     });
 
-    // Set cookie in the response
-    response.cookies.set('auth_token', token, {
+    console.log('Login - Setting auth cookie with token:', token.substring(0, 10) + '...');
+    console.log('Login - Cookie settings:', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 1 day
+      maxAge: 60 * 60 * 24,
       path: '/'
     });
 
