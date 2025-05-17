@@ -153,7 +153,7 @@ export default function LoginPage() {
                 <SelectTrigger>
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="management">Management</SelectItem>
                 </SelectContent>
