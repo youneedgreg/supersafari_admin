@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 
 export default function LoginPage() {
@@ -13,7 +14,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    role: ''
   })
 
   // Check if user is already logged in
@@ -105,6 +107,13 @@ export default function LoginPage() {
     }))
   }
 
+  const handleRoleChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      role: value
+    }))
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-[400px]">
@@ -137,6 +146,18 @@ export default function LoginPage() {
                 onChange={handleInputChange}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select onValueChange={handleRoleChange} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="management">Management</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Button 
               type="submit" 
