@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,42 @@ export default function LoginPage() {
     password: ''
   })
 
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/check', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        })
+        
+        // Check if the response is actually JSON
+        const contentType = response.headers.get('content-type')
+        if (!contentType || !contentType.includes('application/json')) {
+          // Not a JSON response, probably a redirect or HTML page
+          return
+        }
+        
+        if (!response.ok) {
+          return
+        }
+        
+        const data = await response.json()
+        if (data.status === 'OK') {
+          router.push('/')
+        }
+      } catch (error) {
+        // Not logged in or error occurred, stay on login page
+        console.log('Auth check error:', error)
+      }
+    }
+    
+    checkAuth()
+  }, [router])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -24,21 +60,38 @@ export default function LoginPage() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(formData)
       })
 
+      // Check if the response is JSON
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Invalid response format')
+      }
+
       const data = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Invalid email or password')
+        }
+        throw new Error(data.message || 'Login failed')
+      }
 
       if (data.status === 'OK') {
         toast.success('Login successful')
-        router.push('/')
+        // Force a hard navigation to clear any cached state
+        window.location.href = '/'
       } else {
         toast.error(data.message || 'Login failed')
       }
     } catch (error) {
-      toast.error('An error occurred during login')
+      console.error('Login error:', error)
+      toast.error(error instanceof Error ? error.message : 'An error occurred during login')
     } finally {
       setIsLoading(false)
     }
@@ -97,4 +150,4 @@ export default function LoginPage() {
       </Card>
     </div>
   )
-} 
+}

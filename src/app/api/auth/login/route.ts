@@ -1,14 +1,26 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import bcrypt from 'bcryptjs';
-import { cookies } from 'next/headers';
 import { sign } from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { email, password } = body;
+
+    if (!email || !password) {
+      return NextResponse.json({ 
+        status: 'ERROR',
+        message: 'Email and password are required' 
+      }, { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    }
 
     // Get user from database
     const users = await executeQuery(
@@ -20,7 +32,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         status: 'ERROR',
         message: 'Invalid credentials' 
-      }, { status: 401 });
+      }, { 
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
     }
 
     const user = users[0];
@@ -31,7 +48,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         status: 'ERROR',
         message: 'Invalid credentials' 
-      }, { status: 401 });
+      }, { 
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
     }
 
     // Create JWT token
@@ -51,16 +73,8 @@ export async function POST(request: Request) {
       [user.id, request.headers.get('x-forwarded-for') || 'unknown', request.headers.get('user-agent') || 'unknown']
     );
 
-    // Set cookie - await the cookies() call
-    const cookieStore = await cookies();
-    cookieStore.set('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24 // 1 day
-    });
-
-    return NextResponse.json({ 
+    // Create the response
+    const response = NextResponse.json({ 
       status: 'OK',
       message: 'Login successful',
       user: {
@@ -69,13 +83,32 @@ export async function POST(request: Request) {
         name: user.name,
         role: user.role
       }
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
-  } catch (error: any) {
+
+    // Set cookie in the response
+    response.cookies.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24, // 1 day
+      path: '/'
+    });
+
+    return response;
+  } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json({ 
       status: 'ERROR',
-      message: 'Login failed',
-      error: error.message 
-    }, { status: 500 });
+      message: 'Login failed'
+    }, { 
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
   }
 }
