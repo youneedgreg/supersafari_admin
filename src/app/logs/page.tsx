@@ -8,6 +8,26 @@ import { toast } from "sonner"
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 
+interface AutoTableOptions {
+  head?: string[][];
+  body?: (string | number)[][];
+  startY?: number;
+  theme?: string;
+  styles?: {
+    fontSize?: number;
+  };
+  headStyles?: {
+    fillColor?: number[];
+  };
+}
+
+// Add type declaration for jsPDF autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: AutoTableOptions) => jsPDF;
+  }
+}
+
 interface Log {
   id: number
   user_id: number

@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
-import { verify } from 'jsonwebtoken';
 import { cookies } from 'next/headers';
+import { verify } from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export async function GET() {
   try {
     // Get auth token from cookies
-    const token = cookies().get('auth_token')?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
 
     if (!token) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         status: 'ERROR',
-        message: 'Unauthorized' 
+        message: 'Unauthorized'
       }, { status: 401 });
     }
 
@@ -22,14 +23,31 @@ export async function GET() {
     
     // Only admin can view logs
     if (decoded.role !== 'admin') {
-      return NextResponse.json({ 
+      return NextResponse.json({
         status: 'ERROR',
-        message: 'Unauthorized' 
+        message: 'Unauthorized'
       }, { status: 401 });
     }
 
-    // Fetch all logs (both login and activity logs) with user information
-    const logs = await executeQuery(`
+    // Create activity_logs table if it doesn't exist
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        action_type VARCHAR(50) NOT NULL,
+        action_description TEXT,
+        entity_type VARCHAR(50),
+        entity_id INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `;
+    await executeQuery(createTableQuery);
+
+    // Query to get all logs (both login and activity logs)
+    const query = `
       SELECT 
         l.*,
         u.name as user_name,
@@ -65,37 +83,20 @@ export async function GET() {
       JOIN users u ON l.user_id = u.id
       ORDER BY l.timestamp DESC
       LIMIT 100
-    `);
+    `;
 
-    // Format the response
-    const formattedLogs = (logs as any[]).map(log => ({
-      id: log.id,
-      user_id: log.user_id,
-      action_type: log.action_type,
-      action_description: log.action_description,
-      entity_type: log.entity_type,
-      entity_id: log.entity_id,
-      login_time: log.log_type === 'login' ? log.timestamp : null,
-      created_at: log.log_type === 'activity' ? log.timestamp : null,
-      ip_address: log.ip_address,
-      user_agent: log.user_agent,
-      user: {
-        name: log.user_name,
-        email: log.user_email,
-        role: log.user_role
-      }
-    }));
+    const logs = await executeQuery(query);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       status: 'OK',
-      logs: formattedLogs
+      logs
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to fetch logs:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       status: 'ERROR',
       message: 'Failed to fetch logs',
-      error: error.message 
+      error: (error as Error).message
     }, { status: 500 });
   }
 }
@@ -103,12 +104,13 @@ export async function GET() {
 export async function DELETE(request: Request) {
   try {
     // Get auth token from cookies
-    const token = cookies().get('auth_token')?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
 
     if (!token) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         status: 'ERROR',
-        message: 'Unauthorized' 
+        message: 'Unauthorized'
       }, { status: 401 });
     }
 
@@ -117,37 +119,37 @@ export async function DELETE(request: Request) {
     
     // Only admin can delete logs
     if (decoded.role !== 'admin') {
-      return NextResponse.json({ 
+      return NextResponse.json({
         status: 'ERROR',
-        message: 'Unauthorized' 
+        message: 'Unauthorized'
       }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const type = searchParams.get('type') || 'activity'; // Default to activity logs
+    const type = searchParams.get('type');
 
-    if (!id) {
-      return NextResponse.json({ 
+    if (!id || !type) {
+      return NextResponse.json({
         status: 'ERROR',
-        message: 'Log ID is required' 
+        message: 'Log ID and type are required'
       }, { status: 400 });
     }
 
-    // Delete the log based on type
     const table = type === 'login' ? 'login_logs' : 'activity_logs';
-    await executeQuery(`DELETE FROM ${table} WHERE id = ?`, [id]);
+    const query = `DELETE FROM ${table} WHERE id = ?`;
+    await executeQuery(query, [id]);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       status: 'OK',
       message: 'Log deleted successfully'
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to delete log:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       status: 'ERROR',
       message: 'Failed to delete log',
-      error: error.message 
+      error: (error as Error).message
     }, { status: 500 });
   }
 } 
