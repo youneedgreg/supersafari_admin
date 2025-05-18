@@ -75,12 +75,12 @@ export default function LoginPage() {
     e.preventDefault()
     setIsLoading(true)
     setError('')
-
+  
     try {
       if (!formData.email || !formData.password || !formData.role) {
         throw new Error('Please fill in all fields')
       }
-
+  
       console.log('Attempting login for:', { email: formData.email, role: formData.role })
       
       const response = await fetch('/api/auth/login', {
@@ -89,13 +89,13 @@ export default function LoginPage() {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        credentials: 'include',
+        credentials: 'include', // Important: include credentials
         body: JSON.stringify(formData)
       })
-
+  
       console.log('Login response status:', response.status)
       console.log('Login response headers:', Object.fromEntries(response.headers.entries()))
-
+  
       // Check if the response is JSON
       const contentType = response.headers.get('content-type')
       console.log('Login response content type:', contentType)
@@ -103,28 +103,55 @@ export default function LoginPage() {
       if (!contentType || !contentType.includes('application/json')) {
         throw new Error('Invalid response format')
       }
-
+  
       const data = await response.json()
       console.log('Login response data:', data)
-
+  
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error('Invalid email or password')
         }
         throw new Error(data.message || 'Login failed')
       }
-
+  
       if (data.status === 'OK') {
         console.log('Login successful, checking cookies...')
         // Log all cookies
         console.log('Document cookies:', document.cookie)
         
-        toast.success('Login successful! Redirecting...')
-        // Small delay to show the success message before redirect
-        setTimeout(() => {
-          // Force a hard navigation to clear any cached state
-          window.location.href = '/'
-        }, 1000)
+        // Add a verification step to ensure auth token is set correctly
+        try {
+          const verifyResponse = await fetch('/api/auth/check', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include', // Important: include credentials
+          })
+          
+          console.log('Auth verification response:', verifyResponse.status)
+          
+          if (verifyResponse.ok) {
+            const verifyData = await verifyResponse.json()
+            console.log('Auth verification data:', verifyData)
+            
+            if (verifyData.status === 'OK') {
+              toast.success('Login successful! Redirecting...')
+              // Small delay to show the success message before redirect
+              setTimeout(() => {
+                // Force a hard navigation to clear any cached state
+                window.location.href = '/'
+              }, 1500)
+              return
+            }
+          }
+          
+          // If we reach here, verification failed
+          throw new Error('Authentication verification failed after login')
+        } catch (verifyError) {
+          console.error('Auth verification error:', verifyError)
+          throw new Error('Login successful but authentication failed to persist. Please try again.')
+        }
       } else {
         toast.error(data.message || 'Login failed')
         setError(data.message || 'Login failed')
