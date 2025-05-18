@@ -46,7 +46,7 @@ export async function GET() {
     `;
     await executeQuery(createTableQuery);
 
-    // Query to get all logs (both login and activity logs)
+    // Query to get all logs (both login and activity logs) with nested user object
     const query = `
       SELECT 
         l.*,
@@ -102,6 +102,9 @@ export async function GET() {
 }
 
 export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  
   try {
     // Get auth token from cookies
     const cookieStore = await cookies();
@@ -125,20 +128,30 @@ export async function DELETE(request: Request) {
       }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    const type = searchParams.get('type');
-
-    if (!id || !type) {
+    if (!id) {
       return NextResponse.json({
         status: 'ERROR',
-        message: 'Log ID and type are required'
+        message: 'Log ID is required'
       }, { status: 400 });
     }
 
-    const table = type === 'login' ? 'login_logs' : 'activity_logs';
-    const query = `DELETE FROM ${table} WHERE id = ?`;
-    await executeQuery(query, [id]);
+    // Fix: First determine which log type to delete
+    const checkQuery = `SELECT 'login' as source FROM login_logs WHERE id = ?
+                        UNION
+                        SELECT 'activity' as source FROM activity_logs WHERE id = ?
+                        LIMIT 1`;
+    const sourceResult = await executeQuery(checkQuery, [id, id]) as any[];
+    
+    if (!sourceResult || sourceResult.length === 0) {
+      return NextResponse.json({
+        status: 'ERROR',
+        message: 'Log not found'
+      }, { status: 404 });
+    }
+    
+    const table = sourceResult[0].source === 'login' ? 'login_logs' : 'activity_logs';
+    const deleteQuery = `DELETE FROM ${table} WHERE id = ?`;
+    await executeQuery(deleteQuery, [id]);
 
     return NextResponse.json({
       status: 'OK',
@@ -152,4 +165,4 @@ export async function DELETE(request: Request) {
       error: (error as Error).message
     }, { status: 500 });
   }
-} 
+}
