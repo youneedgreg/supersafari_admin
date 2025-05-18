@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { formatDistanceToNow } from 'date-fns';
+import { logActivity } from '@/lib/logger';
 
 // Define the interfaces
 interface NotificationRow extends RowDataPacket {
@@ -101,6 +102,19 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Get notification details before update
+    const notification = await executeQuery(
+      'SELECT title FROM sgftw_notifications WHERE id = ?',
+      [body.id]
+    ) as RowDataPacket[];
+
+    if (notification.length === 0) {
+      return NextResponse.json(
+        { error: 'Notification not found' },
+        { status: 404 }
+      );
+    }
+
     const query = `
       UPDATE sgftw_notifications
       SET \`read\` = ?, updated_at = NOW()
@@ -108,6 +122,15 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     `;
 
     await executeQuery(query, [body.read ? 1 : 0, body.id]);
+
+    // Log the activity
+    await logActivity({
+      actionType: 'UPDATE',
+      actionDescription: `Marked notification as ${body.read ? 'read' : 'unread'}: ${notification[0].title}`,
+      entityType: 'NOTIFICATION',
+      entityId: body.id,
+      request
+    });
 
     return NextResponse.json({ 
       message: `Notification marked as ${body.read ? 'read' : 'unread'}` 
@@ -122,7 +145,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 }
 
 // Mark all notifications as read
-export async function PATCH(): Promise<NextResponse> {
+export async function PATCH(request: NextRequest): Promise<NextResponse> {
   try {
     const query = `
       UPDATE sgftw_notifications
@@ -131,6 +154,14 @@ export async function PATCH(): Promise<NextResponse> {
     `;
 
     await executeQuery(query);
+
+    // Log the activity
+    await logActivity({
+      actionType: 'UPDATE',
+      actionDescription: 'Marked all notifications as read',
+      entityType: 'NOTIFICATION',
+      request
+    });
 
     return NextResponse.json({ 
       message: 'All notifications marked as read' 
@@ -157,8 +188,30 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Get notification details before deletion
+    const notification = await executeQuery(
+      'SELECT title FROM sgftw_notifications WHERE id = ?',
+      [id]
+    ) as RowDataPacket[];
+
+    if (notification.length === 0) {
+      return NextResponse.json(
+        { error: 'Notification not found' },
+        { status: 404 }
+      );
+    }
+
     const query = 'DELETE FROM sgftw_notifications WHERE id = ?';
     await executeQuery(query, [id]);
+
+    // Log the activity
+    await logActivity({
+      actionType: 'DELETE',
+      actionDescription: `Deleted notification: ${notification[0].title}`,
+      entityType: 'NOTIFICATION',
+      entityId: Number(id),
+      request
+    });
 
     return NextResponse.json({ 
       message: 'Notification deleted successfully' 

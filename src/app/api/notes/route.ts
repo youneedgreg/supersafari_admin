@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { format } from 'date-fns';
+import { logActivity } from '@/lib/logger';
 
 // Define the interfaces
 interface NoteRow extends RowDataPacket {
@@ -223,6 +224,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       }
       
+      // Log the activity
+      await logActivity({
+        actionType: 'CREATE',
+        actionDescription: `Created new note: ${body.title}`,
+        entityType: 'NOTE',
+        entityId: noteId,
+        request
+      });
+      
       // Commit transaction
       await executeQuery('COMMIT');
       
@@ -255,6 +265,19 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
+
+    // Get note details before update
+    const note = await executeQuery(
+      'SELECT title FROM sgftw_notes WHERE id = ?',
+      [body.id]
+    ) as RowDataPacket[];
+
+    if (note.length === 0) {
+      return NextResponse.json(
+        { error: 'Note not found' },
+        { status: 404 }
+      );
+    }
     
     // Start a transaction
     await executeQuery('START TRANSACTION');
@@ -262,7 +285,6 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     try {
       // Update note
       const updateFields: string[] = [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const params: any[] = [];
       
       if (body.title !== undefined) {
@@ -314,6 +336,15 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         }
       }
       
+      // Log the activity
+      await logActivity({
+        actionType: 'UPDATE',
+        actionDescription: `Updated note: ${note[0].title}`,
+        entityType: 'NOTE',
+        entityId: body.id,
+        request
+      });
+      
       // Commit transaction
       await executeQuery('COMMIT');
       
@@ -346,17 +377,32 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
-    
-    // Delete note (the tags will be deleted automatically due to CASCADE constraint)
-    const query = 'DELETE FROM sgftw_notes WHERE id = ?';
-    const result = await executeQuery(query, [id]) as ResultSetHeader;
-    
-    if (result.affectedRows === 0) {
+
+    // Get note details before deletion
+    const note = await executeQuery(
+      'SELECT title FROM sgftw_notes WHERE id = ?',
+      [id]
+    ) as RowDataPacket[];
+
+    if (note.length === 0) {
       return NextResponse.json(
         { error: 'Note not found' },
         { status: 404 }
       );
     }
+    
+    // Delete note (the tags will be deleted automatically due to CASCADE constraint)
+    const query = 'DELETE FROM sgftw_notes WHERE id = ?';
+    const result = await executeQuery(query, [id]) as ResultSetHeader;
+    
+    // Log the activity
+    await logActivity({
+      actionType: 'DELETE',
+      actionDescription: `Deleted note: ${note[0].title}`,
+      entityType: 'NOTE',
+      entityId: Number(id),
+      request
+    });
     
     return NextResponse.json({
       message: 'Note deleted successfully'

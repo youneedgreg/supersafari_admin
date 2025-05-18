@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
+import { logActivity } from '@/lib/logger';
 
 // Define the interfaces
 interface TaskRow extends RowDataPacket {
@@ -129,6 +130,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       body.clientId || null
     ]) as { insertId: number };
 
+    // Log the activity
+    await logActivity({
+      actionType: 'CREATE',
+      actionDescription: `Created new task: ${body.title}`,
+      entityType: 'TASK',
+      entityId: result.insertId,
+      request
+    });
+
     return NextResponse.json({ 
       message: 'Task created successfully',
       id: result.insertId
@@ -154,9 +164,21 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Get task details before update
+    const task = await executeQuery(
+      'SELECT title FROM sgftw_tasks WHERE id = ?',
+      [body.id]
+    ) as any[];
+
+    if (task.length === 0) {
+      return NextResponse.json(
+        { error: 'Task not found' },
+        { status: 404 }
+      );
+    }
+
     // Build update query dynamically based on provided fields
     const updateFields: string[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params: any[] = [];
 
     if (body.title !== undefined) {
@@ -202,6 +224,15 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
     await executeQuery(query, params);
 
+    // Log the activity
+    await logActivity({
+      actionType: 'UPDATE',
+      actionDescription: `Updated task: ${task[0].title}`,
+      entityType: 'TASK',
+      entityId: body.id,
+      request
+    });
+
     return NextResponse.json({ 
       message: 'Task updated successfully' 
     });
@@ -227,8 +258,30 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Get task details before deletion
+    const task = await executeQuery(
+      'SELECT title FROM sgftw_tasks WHERE id = ?',
+      [id]
+    ) as any[];
+
+    if (task.length === 0) {
+      return NextResponse.json(
+        { error: 'Task not found' },
+        { status: 404 }
+      );
+    }
+
     const query = 'DELETE FROM sgftw_tasks WHERE id = ?';
     await executeQuery(query, [id]);
+
+    // Log the activity
+    await logActivity({
+      actionType: 'DELETE',
+      actionDescription: `Deleted task: ${task[0].title}`,
+      entityType: 'TASK',
+      entityId: Number(id),
+      request
+    });
 
     return NextResponse.json({ 
       message: 'Task deleted successfully' 

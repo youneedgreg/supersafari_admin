@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
+import { logActivity } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,6 +75,15 @@ export async function POST(request: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const insertId = (result as any)?.insertId;
+
+    // Log the activity
+    await logActivity({
+      actionType: 'CREATE',
+      actionDescription: `Created ${type} event: ${type === 'task' ? insertData.title : insertData.name}`,
+      entityType: type.toUpperCase(),
+      entityId: insertId,
+      request
+    });
 
     return NextResponse.json({
       success: true,
