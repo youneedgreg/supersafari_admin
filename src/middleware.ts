@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { verify } from 'jsonwebtoken'
+import * as jose from 'jose'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+// Edge-compatible secret key
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'your-secret-key'
+)
 
 // Add paths that don't require authentication
 const publicPaths = ['/login', '/api/auth/login', '/api/auth/setup']
 const publicApiPaths = ['/api/auth/login', '/api/auth/setup', '/api/auth/check']
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
   console.log('Middleware - Processing path:', pathname);
@@ -29,7 +32,8 @@ export function middleware(request: NextRequest) {
       
       if (token) {
         try {
-          verify(token.value, JWT_SECRET)
+          // Verify JWT with jose instead of jsonwebtoken
+          await jose.jwtVerify(token.value, JWT_SECRET)
           console.log('Middleware - Valid token on login page, redirecting to home');
           return NextResponse.redirect(new URL('/', request.url))
         } catch (error) {
@@ -60,12 +64,13 @@ export function middleware(request: NextRequest) {
     }
     
     try {
-      // Verify token
-      const decoded = verify(token.value, JWT_SECRET) as { role: string }
+      // Verify JWT with jose
+      const { payload } = await jose.jwtVerify(token.value, JWT_SECRET)
+      const decodedToken = payload as { role: string }
       console.log('Middleware - API route, token verified');
       
       // Check for admin-only routes
-      if (pathname.startsWith('/api/logs') && decoded.role !== 'admin') {
+      if (pathname.startsWith('/api/logs') && decodedToken.role !== 'admin') {
         console.log('Middleware - Admin-only API route, access denied');
         return NextResponse.json(
           { status: 'ERROR', message: 'Forbidden' },
@@ -92,12 +97,13 @@ export function middleware(request: NextRequest) {
   }
   
   try {
-    // Verify token
-    const decoded = verify(token.value, JWT_SECRET) as { role: string }
+    // Verify JWT with jose
+    const { payload } = await jose.jwtVerify(token.value, JWT_SECRET)
+    const decodedToken = payload as { role: string }
     console.log('Middleware - Protected page, token verified');
     
     // Check for admin-only routes
-    if (pathname.startsWith('/logs') && decoded.role !== 'admin') {
+    if (pathname.startsWith('/logs') && decodedToken.role !== 'admin') {
       console.log('Middleware - Admin-only page, redirecting to home');
       return NextResponse.redirect(new URL('/', request.url))
     }
