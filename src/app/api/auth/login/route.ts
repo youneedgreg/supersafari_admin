@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import bcrypt from 'bcryptjs';
-import { sign } from 'jsonwebtoken';
+import * as jose from 'jose';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+// Use the same secret key format as middleware
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'your-secret-key'
+);
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { email, password, role } = body;
     
     console.log('Login attempt for:', email);
     
@@ -62,16 +65,16 @@ export async function POST(request: Request) {
       });
     }
 
-    // Create JWT token
-    const token = sign(
-      {
-        userId: user.id,
-        email: user.email,
-        role: user.role
-      },
-      JWT_SECRET,
-      { expiresIn: '1d' }
-    );
+    // Create JWT token with jose
+    const token = await new jose.SignJWT({
+      userId: user.id,
+      email: user.email,
+      role: user.role
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('1d')
+      .sign(JWT_SECRET);
     
     console.log('JWT token created successfully');
 
@@ -83,7 +86,7 @@ export async function POST(request: Request) {
     
     console.log('Login logged to database');
 
-    // Create the response with the proper cookie
+    // Create the response
     const response = NextResponse.json({
       status: 'OK',
       message: 'Login successful',
@@ -95,7 +98,7 @@ export async function POST(request: Request) {
       }
     });
 
-    // Set cookie with more straightforward approach
+    // Set cookie
     response.cookies.set({
       name: 'auth_token',
       value: token,
@@ -107,9 +110,6 @@ export async function POST(request: Request) {
     });
     
     console.log('Auth cookie set in response');
-    
-    // Log all cookies in the response
-    console.log('Response cookies:', response.cookies);
     
     return response;
   } catch (error) {
