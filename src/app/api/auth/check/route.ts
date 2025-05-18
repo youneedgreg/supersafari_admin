@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
-import { verify } from 'jsonwebtoken';
+import * as jose from 'jose';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+// Use the same secret key format
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'your-secret-key'
+);
 
 export async function GET() {
   try {
@@ -24,7 +27,8 @@ export async function GET() {
     
     // Verify token
     try {
-      const decoded = verify(token, JWT_SECRET) as {
+      const { payload } = await jose.jwtVerify(token, JWT_SECRET);
+      const decoded = payload as {
         userId: number;
         email: string;
         role: string;
