@@ -28,6 +28,7 @@ declare module 'jspdf' {
   }
 }
 
+// Updated interface to match the actual API response structure
 interface Log {
   id: number
   user_id: number
@@ -39,11 +40,10 @@ interface Log {
   created_at?: string
   ip_address: string
   user_agent: string
-  user: {
-    name: string
-    email: string
-    role: string
-  }
+  // Flattened user fields as they come from the API
+  user_name: string
+  user_email: string
+  user_role: string
 }
 
 export default function LogsPage() {
@@ -100,11 +100,11 @@ export default function LogsPage() {
     doc.setFontSize(10)
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22)
 
-    // Prepare table data
+    // Prepare table data - updated to use the flattened user fields
     const tableData = logs.map(log => [
-      log.user.name,
-      log.user.email,
-      log.user.role,
+      log.user_name,
+      log.user_email,
+      log.user_role,
       log.action_type || 'Login',
       log.action_description || 'User login',
       log.entity_type || 'N/A',
@@ -154,7 +154,7 @@ export default function LogsPage() {
                 <div key={log.id} className="flex items-center justify-between border-b pb-3 last:border-0">
                   <div className="flex-grow">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium">{log.user.name}</p>
+                      <p className="font-medium">{log.user_name}</p>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -165,9 +165,9 @@ export default function LogsPage() {
                       </Button>
                     </div>
                     <div className="flex items-center text-sm text-gray-500">
-                      <span>{log.user.email}</span>
+                      <span>{log.user_email}</span>
                       <span className="mx-1">•</span>
-                      <span>{log.user.role}</span>
+                      <span>{log.user_role}</span>
                       <span className="mx-1">•</span>
                       <span>{new Date(log.created_at || log.login_time || '').toLocaleString()}</span>
                     </div>
@@ -198,4 +198,4 @@ export default function LogsPage() {
       </Card>
     </div>
   )
-} 
+}
