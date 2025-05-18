@@ -29,6 +29,22 @@ export async function GET() {
       )
     `);
 
+    // Create activity_logs table
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        action_type VARCHAR(50) NOT NULL,
+        action_description TEXT NOT NULL,
+        entity_type VARCHAR(50) NOT NULL,
+        entity_id INT,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
     // Create default admin user if not exists
     const adminEmail = 'admin@superafrica.com';
     const adminPassword = await bcrypt.hash('admin123', 10);

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import type { NextRequest } from 'next/server';
 import { RowDataPacket } from 'mysql2';
+import { logActivity } from '@/lib/logger';
 
 interface ClientRow extends RowDataPacket {
   id: number;
@@ -130,6 +131,15 @@ export async function POST(request: NextRequest) {
     // Use executeQuery instead of pool.query
     const result = await executeQuery(query, params) as { insertId: number };
     
+    // After successfully adding the client
+    await logActivity({
+      actionType: 'CREATE',
+      actionDescription: `Added new client: ${clientData.name}`,
+      entityType: 'CLIENT',
+      entityId: result.insertId,
+      request
+    });
+
     return NextResponse.json({ 
       status: 'OK',
       message: 'Client added successfully',
@@ -141,6 +151,77 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       status: 'ERROR',
       message: 'Failed to add client',
+      error: { name: error.name, message: error.message } 
+    }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const { id, ...clientData } = await request.json();
+
+    // ... existing code ...
+
+    // After successfully updating the client
+    await logActivity({
+      actionType: 'UPDATE',
+      actionDescription: `Updated client: ${clientData.name}`,
+      entityType: 'CLIENT',
+      entityId: id,
+      request
+    });
+
+    return NextResponse.json({ 
+      status: 'OK',
+      message: 'Client updated successfully'
+    });
+  } catch (error: any) {
+    // ... existing code ...
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    // Get client name before deleting
+    const client = await executeQuery(
+      'SELECT name FROM sgftw_reservation_submissions WHERE id = ?',
+      [id]
+    ) as any[];
+
+    if (client.length === 0) {
+      return NextResponse.json({ 
+        status: 'ERROR',
+        message: 'Client not found' 
+      }, { status: 404 });
+    }
+
+    // Delete the client
+    await executeQuery(
+      'DELETE FROM sgftw_reservation_submissions WHERE id = ?',
+      [id]
+    );
+
+    // Log the deletion
+    await logActivity({
+      actionType: 'DELETE',
+      actionDescription: `Deleted client: ${client[0].name}`,
+      entityType: 'CLIENT',
+      entityId: Number(id),
+      request
+    });
+
+    return NextResponse.json({ 
+      status: 'OK',
+      message: 'Client deleted successfully'
+    });
+  } catch (error: any) {
+    console.error('Failed to delete client:', error);
+    return NextResponse.json({ 
+      status: 'ERROR',
+      message: 'Failed to delete client',
       error: { name: error.name, message: error.message } 
     }, { status: 500 });
   }
