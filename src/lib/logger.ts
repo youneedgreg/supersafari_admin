@@ -21,7 +21,8 @@ export async function logActivity({
 }: LogActivityParams) {
   try {
     // Get auth token from cookies
-    const token = cookies().get('auth_token')?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
 
     if (!token) {
       console.error('No auth token found for activity logging');
