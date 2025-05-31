@@ -8,18 +8,10 @@ import { RowDataPacket } from 'mysql2';
 interface EventRow extends RowDataPacket {
   id: number;
   name: string;
-  arrival_date?: string;
-  departure_date?: string;
-  due_date?: string;
-  event_type: string;
+  arrivalDate: string;
+  departureDate: string;
   status: string;
-  title?: string;
-  description?: string;
-  priority?: string;
-  totalGuests?: number;
-  adults?: number;
-  children?: number;
-  client_name?: string;
+  totalGuests: number;
 }
 
 interface CalendarEvent {
@@ -59,13 +51,10 @@ export async function GET(request: NextRequest) {
         SELECT
           id,
           name,
-          arrival_date,
-          departure_date,
+          arrival_date as arrivalDate,
+          departure_date as departureDate,
           status,
-          'reservation' as event_type,
-          COALESCE(adults, 0) as adults,
-          COALESCE(children, 0) as children,
-          id
+          COALESCE(adults, 0) + COALESCE(children, 0) as totalGuests
         FROM
           sgftw_reservation_submissions
         WHERE
@@ -83,14 +72,14 @@ export async function GET(request: NextRequest) {
       
       // Process reservation rows into arrival and departure events
       for (const row of reservationRows) {
-        const totalGuests = (row.adults || 0) + (row.children || 0);
+        const totalGuests = Number(row.totalGuests);
         
         // Add arrival event if in date range and type is requested
-        if (row.arrival_date && eventTypes.includes('arrival')) {
+        if (row.arrivalDate && eventTypes.includes('arrival')) {
           events.push({
             id: Number(row.id) * 100, // Ensure unique ID for arrival events
             title: `${row.name} Arrival`,
-            date: row.arrival_date,
+            date: row.arrivalDate,
             type: 'arrival',
             status: row.status,
             details: `${totalGuests} guest${totalGuests !== 1 ? 's' : ''}`,
@@ -101,11 +90,11 @@ export async function GET(request: NextRequest) {
         }
         
         // Add departure event if in date range and type is requested
-        if (row.departure_date && eventTypes.includes('departure')) {
+        if (row.departureDate && eventTypes.includes('departure')) {
           events.push({
             id: Number(row.id) * 100 + 1, // Ensure unique ID for departure events
             title: `${row.name} Departure`,
-            date: row.departure_date,
+            date: row.departureDate,
             type: 'departure',
             status: row.status,
             details: `${totalGuests} guest${totalGuests !== 1 ? 's' : ''}`,

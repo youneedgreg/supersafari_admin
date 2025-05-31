@@ -51,15 +51,11 @@ import {
 // Define the interfaces for our data
 interface CalendarEvent {
   id: number;
-  title: string;
-  date: string;
-  type: 'arrival' | 'departure' | 'task';
+  name: string;
+  arrivalDate: string;
+  departureDate: string;
   status: string;
-  details: string;
-  clientId?: number | null;
-  clientName?: string | null;
-  totalGuests?: number;
-  priority?: string;
+  totalGuests: number;
 }
 
 // Month Calendar Component (Enhanced)
@@ -104,8 +100,9 @@ const MonthCalendar = ({
     return events.filter(
       (event) => {
         try {
-          const eventDate = parseISO(event.date);
-          return isSameDay(date, eventDate) && activeEventTypes.includes(event.type);
+          const arrivalDate = parseISO(event.arrivalDate);
+          const departureDate = parseISO(event.departureDate);
+          return isSameDay(date, arrivalDate) || isSameDay(date, departureDate);
         } catch (e) {
           return false;
         }
@@ -116,7 +113,9 @@ const MonthCalendar = ({
   // Group events by type for a specific date
   const getEventsByType = (date: Date) => {
     const dateEvents = getEventsForDate(date);
-    const eventTypes = new Set(dateEvents.map(event => event.type));
+    const eventTypes = new Set(dateEvents.map(event => 
+      isSameDay(parseISO(event.arrivalDate), date) ? 'arrival' : 'departure'
+    ));
     return Array.from(eventTypes);
   };
 
@@ -174,19 +173,20 @@ const MonthCalendar = ({
                     
                     {events.length > 0 && isCurrentMonth && (
                       <div className="px-1 flex flex-col gap-0.5 mt-0.5">
-                        {events.slice(0, 2).map((event, idx) => (
-                          <div 
-                            key={event.id}
-                            className={cn(
-                              "text-xs px-1 py-0.5 rounded truncate text-left",
-                              event.type === 'arrival' && "bg-amber-100 text-amber-800",
-                              event.type === 'departure' && "bg-green-100 text-green-800",
-                              event.type === 'task' && "bg-blue-100 text-blue-800"
-                            )}
-                          >
-                            {event.title.length > 10 ? `${event.title.substring(0, 8)}...` : event.title}
-                          </div>
-                        ))}
+                        {events.slice(0, 2).map((event, idx) => {
+                          const isArrival = isSameDay(parseISO(event.arrivalDate), day);
+                          return (
+                            <div 
+                              key={event.id}
+                              className={cn(
+                                "text-xs px-1 py-0.5 rounded truncate text-left",
+                                isArrival ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"
+                              )}
+                            >
+                              {event.name} {isArrival ? "Arrival" : "Departure"}
+                            </div>
+                          );
+                        })}
                         {events.length > 2 && (
                           <div className="text-xs text-gray-500 px-1">
                             +{events.length - 2} more
@@ -244,8 +244,9 @@ const WeekCalendar = ({
     return events.filter(
       (event) => {
         try {
-          const eventDate = parseISO(event.date);
-          return isSameDay(date, eventDate) && activeEventTypes.includes(event.type);
+          const arrivalDate = parseISO(event.arrivalDate);
+          const departureDate = parseISO(event.departureDate);
+          return isSameDay(date, arrivalDate) || isSameDay(date, departureDate);
         } catch (e) {
           return false;
         }
@@ -296,12 +297,11 @@ const WeekCalendar = ({
                     className={cn(
                       "text-xs p-1 rounded mb-1 cursor-pointer",
                       event.type === 'arrival' && "bg-amber-100 text-amber-800 hover:bg-amber-200",
-                      event.type === 'departure' && "bg-green-100 text-green-800 hover:bg-green-200",
-                      event.type === 'task' && "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                      event.type === 'departure' && "bg-green-100 text-green-800 hover:bg-green-200"
                     )}
                     onClick={() => onSelectDate(day)}
                   >
-                    <div className="font-medium truncate">{event.title}</div>
+                    <div className="font-medium truncate">{event.name}</div>
                     <div className="text-xs opacity-80 truncate">{event.details}</div>
                   </div>
                 ))}
@@ -332,7 +332,7 @@ const AgendaView = ({
   // Filter events in date range and by active types
   const filteredEvents = events.filter((event) => {
     try {
-      const eventDate = parseISO(event.date);
+      const eventDate = parseISO(event.arrivalDate);
       return (
         eventDate >= startDate && 
         eventDate <= endDate && 
@@ -347,7 +347,7 @@ const AgendaView = ({
   const groupedEvents: Record<string, CalendarEvent[]> = {};
   
   filteredEvents.forEach((event) => {
-    const dateStr = event.date.split('T')[0];
+    const dateStr = event.arrivalDate.split('T')[0];
     if (!groupedEvents[dateStr]) {
       groupedEvents[dateStr] = [];
     }
@@ -397,12 +397,11 @@ const AgendaView = ({
                       )}>
                         {event.type === 'arrival' && <User className="h-4 w-4" />}
                         {event.type === 'departure' && <MapPin className="h-4 w-4" />}
-                        {event.type === 'task' && <Clock className="h-4 w-4" />}
                       </div>
                       
                       <div className="flex-1">
                         <div className="flex justify-between items-start">
-                          <h4 className="font-medium">{event.title}</h4>
+                          <h4 className="font-medium">{event.name}</h4>
                           <Badge className={getEventTypeBadgeStyle(event.type)}>
                             {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
                           </Badge>
@@ -445,22 +444,7 @@ export default function NewCalendar() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      
-      // Set date range based on view
-      let monthsAhead = 2;
-      let monthsBehind = 0;
-      
-      if (view === 'month') {
-        monthsAhead = 5; // Six months view (current + 5 ahead)
-      }
-      
-      // Construct the API URL with query parameters
-      const url = new URL('/api/calendar', window.location.origin);
-      url.searchParams.append('monthsAhead', monthsAhead.toString());
-      url.searchParams.append('monthsBehind', monthsBehind.toString());
-      url.searchParams.append('types', activeEventTypes.join(','));
-      
-      const response = await fetch(url.toString());
+      const response = await fetch('/api/calendar');
       
       if (!response.ok) {
         throw new Error('Failed to fetch calendar events');
@@ -769,7 +753,7 @@ export default function NewCalendar() {
               {events
                 .filter(event => {
                   try {
-                    const eventDate = parseISO(event.date);
+                    const eventDate = parseISO(event.arrivalDate);
                     return eventDate >= new Date() && activeEventTypes.includes(event.type);
                   } catch (e) {
                     return false;
@@ -777,7 +761,7 @@ export default function NewCalendar() {
                 })
                 .sort((a, b) => {
                   try {
-                    return parseISO(a.date).getTime() - parseISO(b.date).getTime();
+                    return parseISO(a.arrivalDate).getTime() - parseISO(b.arrivalDate).getTime();
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
                   } catch (e) {
                     return 0;
@@ -790,12 +774,11 @@ export default function NewCalendar() {
                       <div className={`p-2 rounded-full ${getEventTypeIconBg(event.type)} mr-4`}>
                         {event.type === 'arrival' && <User className="h-4 w-4" />}
                         {event.type === 'departure' && <MapPin className="h-4 w-4" />}
-                        {event.type === 'task' && <Clock className="h-4 w-4" />}
                       </div>
                       <div>
-                        <h3 className="font-medium text-sm">{event.title}</h3>
+                        <h3 className="font-medium text-sm">{event.name}</h3>
                         <p className="text-sm text-gray-500">
-                          {format(parseISO(event.date), 'MMM d, yyyy')}
+                          {format(parseISO(event.arrivalDate), 'MMM d, yyyy')}
                         </p>
                         <p className="text-xs text-gray-500">{event.details}</p>
                       </div>
@@ -824,37 +807,30 @@ export default function NewCalendar() {
           
           <div className="py-4 space-y-4">
             {selectedDateEvents.length > 0 ? (
-              selectedDateEvents.map((event) => (
-                <div key={event.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                  <div className="flex items-center">
-                    <div className={`p-2 rounded-full ${getEventTypeIconBg(event.type)} mr-4`}>
-                      {event.type === 'arrival' && <User className="h-4 w-4" />}
-                      {event.type === 'departure' && <MapPin className="h-4 w-4" />}
-                      {event.type === 'task' && <Clock className="h-4 w-4" />}
+              selectedDateEvents.map((event) => {
+                const isArrival = isSameDay(parseISO(event.arrivalDate), selectedDate);
+                return (
+                  <div key={event.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                    <div className="flex items-center">
+                      <div className={`p-2 rounded-full ${isArrival ? "bg-amber-100" : "bg-green-100"} mr-4`}>
+                        {isArrival ? <User className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+                      </div>
+                      <div>
+                        <h3 className="font-medium">{event.name}</h3>
+                        <p className="text-sm text-gray-500">
+                          {event.totalGuests} guest{event.totalGuests !== 1 ? 's' : ''}
+                        </p>
+                        <p className="text-xs text-gray-500">Status: {event.status}</p>
+                      </div>
                     </div>
                     <div>
-                      <h3 className="font-medium">{event.title}</h3>
-                      <p className="text-sm text-gray-500">{event.details}</p>
-                      {event.clientName && (
-                        <p className="text-xs text-gray-500">Client: {event.clientName}</p>
-                      )}
+                      <Badge className={isArrival ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}>
+                        {isArrival ? "Arrival" : "Departure"}
+                      </Badge>
                     </div>
                   </div>
-                  <div>
-                    <Badge className={getEventTypeBadgeStyle(event.type)}>
-                      {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
-                    </Badge>
-                    
-                    {event.priority && (
-                      <div className="mt-1">
-                        <Badge className={getPriorityColor(event.priority)}>
-                          {event.priority.charAt(0).toUpperCase() + event.priority.slice(1)}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center p-4 text-gray-500">
                 No events scheduled for this day. Click &quot;Add Event&quot; to schedule something.
