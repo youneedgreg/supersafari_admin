@@ -3,26 +3,38 @@ import { executeQuery } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { logActivity } from '@/lib/logger';
 
+interface EventData {
+  type: 'arrival' | 'departure' | 'task';
+  name?: string;
+  title?: string;
+  description?: string;
+  arrival_date?: string;
+  departure_date?: string;
+  due_date?: string;
+  status?: string;
+  priority?: string;
+  adults?: number;
+  children?: number;
+  guests?: number;
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const eventData = await request.json();
+    const eventData = await request.json() as EventData;
     const { type, ...dataToUpdate } = eventData;
 
     let table: string;
-    let updateData: Record<string, any>;
+    let updateData: Record<string, string | number | null>;
 
     if (type === 'arrival' || type === 'departure') {
       table = 'sgftw_reservation_submissions';
       updateData = {
         name: dataToUpdate.name || null,
-        arrival_date: type === 'arrival' ? dataToUpdate.arrival_date : null,
-        departure_date:
-          type === 'departure'
-            ? dataToUpdate.departure_date
-            : dataToUpdate.departure_date || null,
+        arrival_date: type === 'arrival' ? (dataToUpdate.arrival_date || null) : null,
+        departure_date: type === 'departure' ? (dataToUpdate.departure_date || null) : null,
         status: dataToUpdate.status || 'planning',
         adults: dataToUpdate.adults || dataToUpdate.guests || 1,
         children: dataToUpdate.children || 0
@@ -30,9 +42,9 @@ export async function PUT(
     } else if (type === 'task') {
       table = 'sgftw_tasks';
       updateData = {
-        title: dataToUpdate.title,
+        title: dataToUpdate.title || '',
         description: dataToUpdate.description || '',
-        due_date: dataToUpdate.due_date,
+        due_date: dataToUpdate.due_date || '',
         priority: dataToUpdate.priority || 'medium',
         status: dataToUpdate.status || 'pending'
       };
@@ -78,7 +90,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { type } = await request.json();
+    const { type } = await request.json() as { type: 'arrival' | 'departure' | 'task' };
 
     let table: string;
     if (type === 'arrival' || type === 'departure') {

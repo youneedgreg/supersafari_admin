@@ -19,7 +19,6 @@ interface EventRow extends RowDataPacket {
   totalGuests?: number;
   adults?: number;
   children?: number;
-  id?: number;
   client_name?: string;
 }
 
@@ -33,6 +32,7 @@ interface CalendarEvent {
   clientId?: number | null;
   clientName?: string | null;
   totalGuests?: number;
+  priority?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -41,21 +41,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     
     // Parse date range parameters
-    const startDateParam = searchParams.get('startDate');
-    const endDateParam = searchParams.get('endDate');
     const monthsAhead = parseInt(searchParams.get('monthsAhead') || '1');
     const monthsBehind = parseInt(searchParams.get('monthsBehind') || '0');
     const eventTypes = searchParams.get('types')?.split(',') || ['arrival', 'departure', 'task'];
     
-    // Set default date range if not provided (current month plus specified months ahead)
-    const baseDate = startDateParam ? parseISO(startDateParam) : new Date();
-    const startDate = startDateParam 
-      ? format(parseISO(startDateParam), 'yyyy-MM-dd')
-      : format(startOfMonth(subMonths(baseDate, monthsBehind)), 'yyyy-MM-dd');
-    
-    const endDate = endDateParam
-      ? format(parseISO(endDateParam), 'yyyy-MM-dd')
-      : format(endOfMonth(addMonths(baseDate, monthsAhead)), 'yyyy-MM-dd');
+    // Set default date range
+    const baseDate = new Date();
+    const startDate = format(startOfMonth(subMonths(baseDate, monthsBehind)), 'yyyy-MM-dd');
+    const endDate = format(endOfMonth(addMonths(baseDate, monthsAhead)), 'yyyy-MM-dd');
     
     // Initialize array for all events
     const events: CalendarEvent[] = [];
@@ -159,7 +152,8 @@ export async function GET(request: NextRequest) {
           status: row.status,
           details: row.client_name ? `Client: ${row.client_name}` : row.description || '',
           clientId: row.id ? Number(row.id) : null,
-          clientName: row.client_name || null
+          clientName: row.client_name || null,
+          priority: row.priority
         });
       }
     }

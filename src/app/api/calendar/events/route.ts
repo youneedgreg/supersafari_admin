@@ -1,30 +1,41 @@
 // app/api/calendar/events/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
-import { RowDataPacket } from 'mysql2';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { logActivity } from '@/lib/logger';
+
+interface EventData {
+  type: 'arrival' | 'departure' | 'task';
+  name?: string;
+  title?: string;
+  description?: string;
+  arrival_date?: string;
+  departure_date?: string;
+  due_date?: string;
+  status?: string;
+  priority?: string;
+  adults?: number;
+  children?: number;
+  guests?: number;
+  id?: number;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const eventData = await request.json();
+    const eventData = await request.json() as EventData;
 
     const { type, ...dataToInsert } = eventData;
 
     let table: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let insertData: Record<string, any>;
+    let insertData: Record<string, string | number | null>;
 
     if (type === 'arrival' || type === 'departure') {
       table = 'sgftw_reservation_submissions';
 
       insertData = {
-        id: dataToInsert.id,
         name: dataToInsert.name || null,
-        arrival_date: type === 'arrival' ? dataToInsert.arrival_date : null,
-        departure_date:
-          type === 'departure'
-            ? dataToInsert.departure_date
-            : dataToInsert.departure_date || null,
+        arrival_date: type === 'arrival' ? (dataToInsert.arrival_date || null) : null,
+        departure_date: type === 'departure' ? (dataToInsert.departure_date || null) : null,
         status: dataToInsert.status || 'planning',
         adults: dataToInsert.adults || dataToInsert.guests || 1,
         children: dataToInsert.children || 0,
@@ -32,13 +43,9 @@ export async function POST(request: NextRequest) {
       };
 
       // If name is not given, fetch from DB using ID
-      if (!insertData.name && insertData.id) {
-        const clientQuery =
-          'SELECT name FROM sgftw_reservation_submissions WHERE id = ?';
-        const clientResult = (await executeQuery(
-          clientQuery,
-          [insertData.id]
-        )) as RowDataPacket[];
+      if (!insertData.name && dataToInsert.id) {
+        const clientQuery = 'SELECT name FROM sgftw_reservation_submissions WHERE id = ?';
+        const clientResult = (await executeQuery(clientQuery, [dataToInsert.id])) as RowDataPacket[];
 
         if (clientResult.length > 0) {
           insertData.name = clientResult[0].name;
@@ -48,9 +55,9 @@ export async function POST(request: NextRequest) {
       table = 'sgftw_tasks';
 
       insertData = {
-        title: dataToInsert.title,
+        title: dataToInsert.title || '',
         description: dataToInsert.description || '',
-        due_date: dataToInsert.due_date,
+        due_date: dataToInsert.due_date || '',
         priority: dataToInsert.priority || 'medium',
         status: dataToInsert.status || 'pending',
         id: dataToInsert.id || null,
@@ -65,16 +72,13 @@ export async function POST(request: NextRequest) {
     }
 
     const columns = Object.keys(insertData).join(', ');
-    const placeholders = Object.keys(insertData)
-      .map(() => '?')
-      .join(', ');
+    const placeholders = Object.keys(insertData).map(() => '?').join(', ');
     const values = Object.values(insertData);
 
     const query = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
-    const result = await executeQuery(query, values);
+    const [, result] = await executeQuery(query, values) as [RowDataPacket[], ResultSetHeader];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const insertId = (result as any)?.insertId;
+    const insertId = result.insertId;
 
     // Log the activity
     await logActivity({

@@ -18,7 +18,6 @@ interface EventRow extends RowDataPacket {
   priority?: string;
   adults?: number;
   children?: number;
-  id?: number;
   client_name?: string;
 }
 
@@ -64,8 +63,7 @@ export async function GET(request: NextRequest) {
         status,
         'reservation' as event_type,
         COALESCE(adults, 0) as adults,
-        COALESCE(children, 0) as children,
-        id
+        COALESCE(children, 0) as children
       FROM
         sgftw_reservation_submissions
       WHERE
@@ -120,7 +118,6 @@ export async function GET(request: NextRequest) {
         t.priority,
         t.status,
         'task' as event_type,
-        t.id,
         c.name as client_name
       FROM
         sgftw_tasks t
