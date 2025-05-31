@@ -178,18 +178,14 @@ const CustomCalendar: React.FC<CustomCalendarProps> = ({
               !isCurrentMonth ? "text-gray-300" : ""
             } ${
               isSelected ? "bg-gray-100 rounded-md font-semibold" : ""
+            } ${
+              dayHasArrival ? "border-2 border-amber-400 rounded-md" : ""
+            } ${
+              dayHasDeparture ? "border-2 border-green-500 rounded-md" : ""
             }`}
             onClick={() => isCurrentMonth && onDateSelect(cloneDay)}
           >
             <span>{format(day, 'd')}</span>
-            <div className="flex justify-center gap-1 absolute -bottom-1 left-0 right-0">
-              {dayHasArrival && (
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
-              )}
-              {dayHasDeparture && (
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-              )}
-            </div>
           </div>
         );
         day = addDays(day, 1);
