@@ -67,8 +67,10 @@ export async function GET(request: NextRequest) {
       FROM
         sgftw_reservation_submissions
       WHERE
-        STR_TO_DATE(arrival_date, '%Y-%m-%d') = ?
-        OR STR_TO_DATE(departure_date, '%Y-%m-%d') = ?
+        departure_date IS NOT NULL
+  AND departure_date != ''
+  AND arrival_date IS NOT NULL
+  AND arrival_date != ''
       ORDER BY
         name
     `;
