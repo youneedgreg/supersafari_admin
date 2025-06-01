@@ -5,6 +5,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { SonnerProvider } from "@/components/sonner-provider"
 import { SidebarProvider } from "@/components/sidebar-provider"
+import { QueryProvider } from "@/components/providers/query-provider"
 import Sidebar from "@/components/sidebar"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -29,13 +30,15 @@ export default function RootLayout({
           forcedTheme="light"
           disableTransitionOnChange
         >
-          <SidebarProvider>
-            <div className="flex h-screen overflow-hidden">
-              <Sidebar />
-              <main className="flex-1 overflow-y-auto bg-background">{children}</main>
-            </div>
-            <SonnerProvider />
-          </SidebarProvider>
+          <QueryProvider>
+            <SidebarProvider>
+              <div className="flex h-screen overflow-hidden">
+                <Sidebar />
+                <main className="flex-1 overflow-y-auto bg-background">{children}</main>
+              </div>
+              <SonnerProvider />
+            </SidebarProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
