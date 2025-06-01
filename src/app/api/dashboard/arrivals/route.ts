@@ -25,6 +25,7 @@ export async function GET() {
         sgftw_reservation_submissions
       WHERE 
         status IN ('confirmed', 'booked') 
+        AND STR_TO_DATE(arrival_date, '%Y-%m-%d') BETWEEN ? AND ?
         AND departure_date IS NOT NULL
       ORDER BY 
         STR_TO_DATE(arrival_date, '%Y-%m-%d') ASC
