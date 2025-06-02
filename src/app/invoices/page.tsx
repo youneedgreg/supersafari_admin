@@ -403,7 +403,7 @@ export default function InvoicesPage() {
                       <SelectTrigger id="client">
                         <SelectValue placeholder="Select client" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white">
                         {clients.map((client) => (
                           <SelectItem key={client.id} value={client.id.toString()}>
                             {client.name}
