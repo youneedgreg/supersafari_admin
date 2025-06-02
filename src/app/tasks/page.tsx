@@ -362,7 +362,7 @@ export default function TasksPage() {
                       <SelectTrigger id="task-priority">
                         <SelectValue placeholder="Select priority" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white">
                         <SelectItem value="high">High</SelectItem>
                         <SelectItem value="medium">Medium</SelectItem>
                         <SelectItem value="low">Low</SelectItem>
