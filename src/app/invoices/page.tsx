@@ -665,7 +665,7 @@ export default function InvoicesPage() {
 
       {/* View Invoice Dialog */}
       <Dialog open={isViewInvoiceOpen} onOpenChange={setIsViewInvoiceOpen}>
-        <DialogContent className="sm:max-w-[700px] bg-white">
+        <DialogContent className="sm:max-w-[700px] bg-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Invoice {selectedInvoice?.id}</DialogTitle>
             <DialogDescription>{selectedInvoice?.clientName}</DialogDescription>
