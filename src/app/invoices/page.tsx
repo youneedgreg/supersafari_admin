@@ -679,10 +679,11 @@ export default function InvoicesPage() {
             <div className="py-4">
               <div className="flex justify-between mb-6">
                 <div>
-                  <h3 className="font-bold text-xl">Safari Management</h3>
-                  <p className="text-gray-500">123 Safari Road</p>
-                  <p className="text-gray-500">Nairobi, Kenya</p>
-                  <p className="text-gray-500">info@safariadmin.com</p>
+                  <h3 className="font-bold text-xl">Super Africa Wildlife and Adventure Safaris</h3>
+                  <p className="text-gray-500">Royal Tower, Hospital Road</p>
+                  <p className="text-gray-500">P.O. Box 100</p>
+                  <p className="text-gray-500">Kisii, Kenya</p>
+                  <p className="text-gray-500">info@superafricasafaris.com</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-xl">INVOICE</p>
