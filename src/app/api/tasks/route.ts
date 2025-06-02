@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { logActivity } from '@/lib/logger';
+import { notifyTaskCreated, notifyTaskCompleted } from '@/lib/notifications';
 
 // Define the interfaces
 interface TaskRow extends RowDataPacket {
@@ -35,6 +36,24 @@ interface TaskResponse {
   status: string;
   clientId: number | null;
   clientName: string | null;
+}
+
+interface TaskCreateRequest {
+  title: string;
+  description?: string;
+  dueDate: string;
+  priority: 'high' | 'medium' | 'low';
+  clientId?: number;
+}
+
+interface TaskUpdateRequest {
+  id: number;
+  title?: string;
+  description?: string;
+  dueDate?: string;
+  priority?: 'high' | 'medium' | 'low';
+  status?: 'pending' | 'completed';
+  clientId?: number;
 }
 
 export async function GET(): Promise<NextResponse> {
@@ -98,51 +117,50 @@ export async function GET(): Promise<NextResponse> {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const body: TaskRequest = await request.json();
-
-    // Validate required fields
-    if (!body.title || !body.dueDate) {
+    const body: TaskCreateRequest = await request.json();
+    
+    if (!body.title || !body.dueDate || !body.priority) {
       return NextResponse.json(
-        { error: 'Title and due date are required' },
+        { error: 'Title, due date, and priority are required' },
         { status: 400 }
       );
     }
 
-    // Insert new task
     const query = `
       INSERT INTO sgftw_tasks (
-        title, 
-        description, 
-        due_date, 
-        priority, 
-        status, 
+        title,
+        description,
+        due_date,
+        priority,
+        status,
         client_id,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+      ) VALUES (?, ?, ?, ?, 'pending', ?, NOW())
     `;
 
     const result = await executeQuery(query, [
       body.title,
       body.description || null,
       body.dueDate,
-      body.priority || 'medium',
-      body.status || 'pending',
+      body.priority,
       body.clientId || null
     ]) as { insertId: number };
 
-    // Log the activity
-    await logActivity({
-      actionType: 'CREATE',
-      actionDescription: `Created new task: ${body.title}`,
-      entityType: 'TASK',
-      entityId: result.insertId,
-      request
-    });
+    // Get client name if task is associated with a client
+    let clientName: string | undefined;
+    if (body.clientId) {
+      const clientQuery = 'SELECT name FROM sgftw_reservation_submissions WHERE id = ?';
+      const clientResult = await executeQuery(clientQuery, [body.clientId]) as RowDataPacket[];
+      clientName = clientResult[0]?.name;
+    }
 
-    return NextResponse.json({ 
+    // Create notification for new task
+    await notifyTaskCreated(result.insertId, body.title, clientName);
+
+    return NextResponse.json({
       message: 'Task created successfully',
-      id: result.insertId
-    }, { status: 201 });
+      taskId: result.insertId
+    });
   } catch (error) {
     console.error('Database error:', error);
     return NextResponse.json(
@@ -155,7 +173,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 // PUT endpoint to update a task
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
-    const body: TaskRequest = await request.json();
+    const body: TaskUpdateRequest = await request.json();
     
     if (!body.id) {
       return NextResponse.json(
@@ -164,23 +182,26 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Get task details before update
-    const task = await executeQuery(
-      'SELECT title FROM sgftw_tasks WHERE id = ?',
-      [body.id]
-    ) as any[];
+    // Get current task details
+    const currentTaskQuery = `
+      SELECT t.*, c.name as client_name
+      FROM sgftw_tasks t
+      LEFT JOIN sgftw_reservation_submissions c ON t.client_id = c.id
+      WHERE t.id = ?
+    `;
+    const currentTask = await executeQuery(currentTaskQuery, [body.id]) as TaskRow[];
 
-    if (task.length === 0) {
+    if (currentTask.length === 0) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
       );
     }
 
-    // Build update query dynamically based on provided fields
+    // Build update query based on provided fields
     const updateFields: string[] = [];
-    const params: any[] = [];
-
+    const params: (string | number | null)[] = [];
+    
     if (body.title !== undefined) {
       updateFields.push('title = ?');
       params.push(body.title);
@@ -210,31 +231,31 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       updateFields.push('client_id = ?');
       params.push(body.clientId);
     }
-
+    
     updateFields.push('updated_at = NOW()');
     
     // Add task ID to params
     params.push(body.id);
-
+    
     const query = `
       UPDATE sgftw_tasks
       SET ${updateFields.join(', ')}
       WHERE id = ?
     `;
-
+    
     await executeQuery(query, params);
 
-    // Log the activity
-    await logActivity({
-      actionType: 'UPDATE',
-      actionDescription: `Updated task: ${task[0].title}`,
-      entityType: 'TASK',
-      entityId: body.id,
-      request
-    });
-
-    return NextResponse.json({ 
-      message: 'Task updated successfully' 
+    // If status was changed to completed, create notification
+    if (body.status === 'completed' && currentTask[0].status !== 'completed') {
+      await notifyTaskCompleted(
+        body.id,
+        body.title || currentTask[0].title,
+        currentTask[0].client_name || undefined
+      );
+    }
+    
+    return NextResponse.json({
+      message: 'Task updated successfully'
     });
   } catch (error) {
     console.error('Database error:', error);
@@ -259,11 +280,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
 
     // Get task details before deletion
-    const task = await executeQuery(
-      'SELECT title FROM sgftw_tasks WHERE id = ?',
-      [id]
-    ) as any[];
-
+    const taskQuery = 'SELECT title FROM sgftw_tasks WHERE id = ?';
+    const task = await executeQuery(taskQuery, [id]) as RowDataPacket[];
+    
     if (task.length === 0) {
       return NextResponse.json(
         { error: 'Task not found' },
@@ -282,9 +301,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       entityId: Number(id),
       request
     });
-
-    return NextResponse.json({ 
-      message: 'Task deleted successfully' 
+    
+    return NextResponse.json({
+      message: 'Task deleted successfully'
     });
   } catch (error) {
     console.error('Database error:', error);

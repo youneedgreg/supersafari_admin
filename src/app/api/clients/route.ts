@@ -5,6 +5,7 @@ import { executeQuery } from '@/lib/db';
 import type { NextRequest } from 'next/server';
 import { RowDataPacket } from 'mysql2';
 import { logActivity } from '@/lib/logger';
+import { notifyClientCreated, notifyClientStatusChanged, notifyClientDeleted } from '@/lib/notifications';
 
 interface ClientRow extends RowDataPacket {
   id: number;
@@ -140,18 +141,21 @@ export async function POST(request: NextRequest) {
       request
     });
 
-    return NextResponse.json({ 
+    // Create notification for new client
+    await notifyClientCreated(result.insertId, clientData.name);
+    
+    return NextResponse.json({
       status: 'OK',
       message: 'Client added successfully',
-      clientId: result.insertId 
+      clientId: result.insertId
     });
     
   } catch (error: any) {
     console.error('Failed to add client:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       status: 'ERROR',
       message: 'Failed to add client',
-      error: { name: error.name, message: error.message } 
+      error: { name: error.name, message: error.message }
     }, { status: 500 });
   }
 }
@@ -180,31 +184,94 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// Add a new endpoint to handle status changes
+export async function PATCH(request: NextRequest) {
+  try {
+    const { id, status } = await request.json();
+    
+    if (!id || !status) {
+      return NextResponse.json({
+        status: 'ERROR',
+        message: 'Client ID and status are required'
+      }, { status: 400 });
+    }
+
+    // Get current status before update
+    const currentStatusQuery = 'SELECT status, name FROM sgftw_reservation_submissions WHERE id = ?';
+    const currentStatus = await executeQuery(currentStatusQuery, [id]) as RowDataPacket[];
+    
+    if (currentStatus.length === 0) {
+      return NextResponse.json({
+        status: 'ERROR',
+        message: 'Client not found'
+      }, { status: 404 });
+    }
+
+    // Update status
+    const updateQuery = 'UPDATE sgftw_reservation_submissions SET status = ? WHERE id = ?';
+    await executeQuery(updateQuery, [status, id]);
+
+    // Log the activity
+    await logActivity({
+      actionType: 'UPDATE',
+      actionDescription: `Updated client status to ${status}`,
+      entityType: 'CLIENT',
+      entityId: id,
+      request
+    });
+
+    // Create notification for status change
+    await notifyClientStatusChanged(
+      id,
+      currentStatus[0].name,
+      currentStatus[0].status,
+      status
+    );
+    
+    return NextResponse.json({
+      status: 'OK',
+      message: 'Client status updated successfully'
+    });
+    
+  } catch (error: any) {
+    console.error('Failed to update client status:', error);
+    return NextResponse.json({
+      status: 'ERROR',
+      message: 'Failed to update client status',
+      error: { name: error.name, message: error.message }
+    }, { status: 500 });
+  }
+}
+
+// Add DELETE endpoint
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-
-    // Get client name before deleting
-    const client = await executeQuery(
-      'SELECT name FROM sgftw_reservation_submissions WHERE id = ?',
-      [id]
-    ) as any[];
-
-    if (client.length === 0) {
-      return NextResponse.json({ 
+    
+    if (!id) {
+      return NextResponse.json({
         status: 'ERROR',
-        message: 'Client not found' 
+        message: 'Client ID is required'
+      }, { status: 400 });
+    }
+
+    // Get client details before deletion
+    const clientQuery = 'SELECT name FROM sgftw_reservation_submissions WHERE id = ?';
+    const client = await executeQuery(clientQuery, [id]) as RowDataPacket[];
+    
+    if (client.length === 0) {
+      return NextResponse.json({
+        status: 'ERROR',
+        message: 'Client not found'
       }, { status: 404 });
     }
 
-    // Delete the client
-    await executeQuery(
-      'DELETE FROM sgftw_reservation_submissions WHERE id = ?',
-      [id]
-    );
+    // Delete client
+    const deleteQuery = 'DELETE FROM sgftw_reservation_submissions WHERE id = ?';
+    await executeQuery(deleteQuery, [id]);
 
-    // Log the deletion
+    // Log the activity
     await logActivity({
       actionType: 'DELETE',
       actionDescription: `Deleted client: ${client[0].name}`,
@@ -213,16 +280,20 @@ export async function DELETE(request: NextRequest) {
       request
     });
 
-    return NextResponse.json({ 
+    // Create notification for client deletion
+    await notifyClientDeleted(client[0].name);
+    
+    return NextResponse.json({
       status: 'OK',
       message: 'Client deleted successfully'
     });
+    
   } catch (error: any) {
     console.error('Failed to delete client:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       status: 'ERROR',
       message: 'Failed to delete client',
-      error: { name: error.name, message: error.message } 
+      error: { name: error.name, message: error.message }
     }, { status: 500 });
   }
 }

@@ -50,7 +50,7 @@ export async function GET(): Promise<NextResponse> {
           ELSE NULL
         END as client_name
       FROM 
-        sgftw_notifications n
+        sgftw_notifications 
       LEFT JOIN 
         sgftw_reservation_submissions c ON n.client_id = c.id
       ORDER BY 

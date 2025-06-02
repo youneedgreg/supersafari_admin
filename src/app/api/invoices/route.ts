@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { format } from 'date-fns';
+import { logActivity } from '@/lib/logger';
+import { notifyInvoiceCreated, notifyInvoiceStatusChanged } from '@/lib/notifications';
 
 // Define the interfaces
 interface InvoiceRow extends RowDataPacket {
@@ -276,15 +278,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ]);
       }
       
+      // Get client name for notification
+      const clientQuery = 'SELECT name FROM sgftw_reservation_submissions WHERE id = ?';
+      const clientResult = await executeQuery(clientQuery, [body.clientId]) as RowDataPacket[];
+      const clientName = clientResult[0]?.name || 'Unknown Client';
+      
       // Commit transaction
       await executeQuery('COMMIT');
+
+      // Create notification for new invoice
+      await notifyInvoiceCreated(invoiceId, clientName, totalAmount);
       
       return NextResponse.json({
         message: 'Invoice created successfully',
-        id: invoiceId
-      }, { status: 201 });
+        invoiceId
+      });
     } catch (error) {
-      // Rollback transaction on error
       await executeQuery('ROLLBACK');
       throw error;
     }
@@ -311,7 +320,6 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     
     // Build update query based on provided fields
     const updateFields: string[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params: any[] = [];
     
     if (body.clientId !== undefined) {
@@ -351,6 +359,21 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     `;
     
     await executeQuery(query, params);
+
+    // If status was updated, create notification
+    if (body.status !== undefined) {
+      // Get client name for notification
+      const clientQuery = `
+        SELECT c.name 
+        FROM sgftw_reservation_submissions c
+        JOIN sgftw_invoices i ON i.client_id = c.id
+        WHERE i.id = ?
+      `;
+      const clientResult = await executeQuery(clientQuery, [body.id]) as RowDataPacket[];
+      const clientName = clientResult[0]?.name || 'Unknown Client';
+
+      await notifyInvoiceStatusChanged(body.id, clientName, body.status);
+    }
     
     return NextResponse.json({
       message: 'Invoice updated successfully'
