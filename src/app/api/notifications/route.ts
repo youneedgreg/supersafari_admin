@@ -37,25 +37,26 @@ export async function GET(): Promise<NextResponse> {
   try {
     // Query to get all notifications
     const query = `
-      SELECT 
-        n.id,
-        n.title,
-        n.message,
-        n.created_at,
-        n.type,
-        n.read,
-        n.client_id,
-        CASE 
-          WHEN n.client_id IS NOT NULL THEN c.name
-          ELSE NULL
-        END as client_name
-      FROM 
-        sgftw_notifications 
-      LEFT JOIN 
-        sgftw_reservation_submissions c ON n.client_id = c.id
-      ORDER BY 
-        n.created_at DESC
-    `;
+  SELECT 
+    n.id,
+    n.title,
+    n.message,
+    n.created_at,
+    n.type,
+    n.read,
+    n.client_id,
+    CASE 
+      WHEN n.client_id IS NOT NULL THEN c.name
+      ELSE NULL
+    END as client_name
+  FROM 
+    sgftw_notifications n
+  LEFT JOIN 
+    sgftw_reservation_submissions c ON n.client_id = c.id
+  ORDER BY 
+    n.created_at DESC
+`;
+
 
     // Use the executeQuery function
     const rows = await executeQuery(query) as NotificationRow[];
