@@ -41,6 +41,27 @@ export default function NotificationsPage() {
       
       const data = await response.json()
       setNotifications(data)
+
+      // Send email for new unread notifications
+      const newUnreadNotifications = data.filter((n: Notification) => !n.read)
+      for (const notification of newUnreadNotifications) {
+        try {
+          await fetch("/api/notifications/email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: notification.title,
+              message: notification.message,
+              type: notification.type,
+              clientName: notification.clientName,
+            }),
+          })
+        } catch (error) {
+          console.error("Error sending email notification:", error)
+        }
+      }
     } catch (error) {
       console.error("Error fetching notifications:", error)
       toast.error("Failed to load notifications", {
