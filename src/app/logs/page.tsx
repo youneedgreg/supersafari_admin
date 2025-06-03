@@ -109,7 +109,7 @@ export default function LogsPage() {
       log.action_description || 'User login',
       log.entity_type || 'N/A',
       log.entity_id || 'N/A',
-      new Date(log.created_at || log.login_time || '').toLocaleString(),
+      log.created_at ? new Date(log.created_at).toLocaleString() : (log.login_time ? new Date(log.login_time).toLocaleString() : 'N/A'),
       log.ip_address
     ])
 
@@ -150,8 +150,8 @@ export default function LogsPage() {
             <div className="py-8 text-center text-gray-500">Loading logs...</div>
           ) : logs.length > 0 ? (
             <div className="space-y-4">
-              {logs.map((log) => (
-                <div key={log.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+              {logs.map((log, index) => (
+                <div key={`${log.id}-${index}`} className="flex items-center justify-between border-b pb-3 last:border-0">
                   <div className="flex-grow">
                     <div className="flex items-center justify-between">
                       <p className="font-medium">{log.user_name}</p>
@@ -169,7 +169,9 @@ export default function LogsPage() {
                       <span className="mx-1">•</span>
                       <span>{log.user_role}</span>
                       <span className="mx-1">•</span>
-                      <span>{new Date(log.created_at || log.login_time || '').toLocaleString()}</span>
+                      <span>
+                        {log.created_at ? new Date(log.created_at).toLocaleString() : (log.login_time ? new Date(log.login_time).toLocaleString() : 'N/A')}
+                      </span>
                     </div>
                     <div className="text-sm mt-1">
                       <span className="font-medium">{log.action_type || 'Login'}:</span>{' '}
