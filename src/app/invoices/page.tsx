@@ -458,19 +458,24 @@ export default function InvoicesPage() {
   // Fetch all clients for the select dropdown
   const fetchClients = async () => {
     try {
-      // For now, creating a mock client list
-      // In a real application, you would fetch this from an API
-      const mockClients = [
-        { id: 1, name: "John & Sarah Smith" },
-        { id: 2, name: "David Williams" },
-        { id: 3, name: "Thompson Family" },
-        { id: 4, name: "Maria Garcia" },
-        { id: 5, name: "Chen Family" },
-        { id: 6, name: "Robert Johnson" }
-      ]
-      setClients(mockClients)
+      const response = await fetch("/api/clients")
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch clients")
+      }
+      
+      const data = await response.json()
+      if (data.status === 'OK') {
+        setClients(data.clients)
+      } else {
+        console.error('Error fetching clients:', data.message)
+        toast.error('Failed to load clients')
+      }
     } catch (error) {
       console.error("Error fetching clients:", error)
+      toast.error("Failed to load clients", {
+        description: "There was an error loading the client list. Please try again.",
+      })
     }
   }
 
