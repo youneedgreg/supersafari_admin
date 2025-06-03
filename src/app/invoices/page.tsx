@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, CreditCard, Download, Eye, Filter, Loader2, MoreHorizontal, Plus, Printer, Search, User, Receipt } from "lucide-react"
+import { Calendar, CreditCard, Download, Eye, Filter, Loader2, MoreHorizontal, Plus, Printer, Search, User, Receipt, DollarSign } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
@@ -34,6 +34,17 @@ interface InvoiceItem {
   total: number
 }
 
+interface Payment {
+  id: string
+  invoiceId: string
+  amount: number
+  date: string
+  paymentMethod: string
+  referenceNumber: string
+  notes?: string
+  type: 'full' | 'deposit' | 'partial'
+}
+
 interface Invoice {
   id: string
   clientId: number
@@ -44,6 +55,8 @@ interface Invoice {
   status: string
   notes?: string
   items?: InvoiceItem[]
+  payments?: Payment[]
+  remainingBalance?: number
 }
 
 interface Client {
@@ -64,7 +77,7 @@ interface Receipt {
   notes?: string
 }
 
-// Add this function before the InvoicesPage component
+// Add these functions before the InvoicesPage component
 const generatePDF = (invoice: Invoice) => {
   const doc = new jsPDF()
   
@@ -305,6 +318,98 @@ const handlePrint = (invoice: Invoice, type: 'invoice' | 'receipt') => {
   }
 }
 
+// Add these functions after the handlePrint function
+const calculateRemainingBalance = (invoice: Invoice): number => {
+  const totalPaid = invoice.payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0
+  return invoice.amount - totalPaid
+}
+
+const handleRecordPayment = async (invoice: Invoice, paymentType: 'full' | 'deposit' | 'partial', amount?: number) => {
+  try {
+    // Calculate payment amount based on type
+    let paymentAmount: number
+    const remainingBalance = calculateRemainingBalance(invoice)
+
+    switch (paymentType) {
+      case 'full':
+        paymentAmount = remainingBalance
+        break
+      case 'deposit':
+        paymentAmount = invoice.amount * 0.3 // 30% deposit
+        break
+      case 'partial':
+        if (!amount || amount <= 0) {
+          toast.error("Please enter a valid payment amount")
+          return
+        }
+        if (amount > remainingBalance) {
+          toast.error("Payment amount cannot exceed remaining balance")
+          return
+        }
+        paymentAmount = amount
+        break
+      default:
+        toast.error("Invalid payment type")
+        return
+    }
+
+    // Create new payment record
+    const newPayment: Payment = {
+      id: `PAY-${Date.now()}`,
+      invoiceId: invoice.id,
+      amount: paymentAmount,
+      date: new Date().toISOString().split('T')[0],
+      paymentMethod: "Bank Transfer", // This would come from a payment form
+      referenceNumber: `REF-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      type: paymentType,
+      notes: `Payment of ${paymentType} amount`
+    }
+
+    // Update invoice with new payment
+    const updatedInvoice: Invoice = {
+      ...invoice,
+      payments: [...(invoice.payments || []), newPayment],
+      remainingBalance: calculateRemainingBalance(invoice) - paymentAmount
+    }
+
+    // Update invoice status based on remaining balance
+    const newRemainingBalance = calculateRemainingBalance(invoice) - paymentAmount
+    if (newRemainingBalance <= 0) {
+      updatedInvoice.status = "paid"
+    } else if (updatedInvoice.payments?.length === 1 && paymentType === 'deposit') {
+      updatedInvoice.status = "deposit_paid"
+    } else {
+      updatedInvoice.status = "partially_paid"
+    }
+
+    // Update local state
+    setInvoices((prev: Invoice[]) => 
+      prev.map((inv: Invoice) => 
+        inv.id === invoice.id ? updatedInvoice : inv
+      )
+    )
+
+    // Generate and print receipt for the payment
+    const receipt: Receipt = {
+      id: `RCP-${Date.now()}`,
+      invoiceId: invoice.id,
+      clientId: invoice.clientId,
+      clientName: invoice.clientName,
+      amount: paymentAmount,
+      date: new Date().toISOString().split('T')[0],
+      paymentMethod: newPayment.paymentMethod,
+      referenceNumber: newPayment.referenceNumber,
+      notes: `Payment of ${paymentType} amount for invoice ${invoice.id}`
+    }
+    printReceipt(receipt)
+
+    toast.success("Payment recorded successfully")
+  } catch (error) {
+    console.error("Error recording payment:", error)
+    toast.error("Failed to record payment")
+  }
+}
+
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [clients, setClients] = useState<Client[]>([])
@@ -316,6 +421,8 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true)
   const [viewLoading, setViewLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null)
 
   // New invoice form state
   const [newInvoice, setNewInvoice] = useState({
@@ -628,6 +735,113 @@ export default function InvoicesPage() {
     }
   }
 
+  // Add this function to handle opening the payment dialog
+  const handleOpenPaymentDialog = (invoice: Invoice) => {
+    setSelectedInvoiceForPayment(invoice)
+    setIsPaymentDialogOpen(true)
+  }
+
+  // Add PaymentDialog component inside InvoicesPage
+  const PaymentDialog = ({ 
+    invoice, 
+    isOpen, 
+    onClose 
+  }: { 
+    invoice: Invoice, 
+    isOpen: boolean, 
+    onClose: () => void 
+  }) => {
+    const [paymentType, setPaymentType] = useState<'full' | 'deposit' | 'partial'>('full')
+    const [amount, setAmount] = useState<string>('')
+    const [submitting, setSubmitting] = useState(false)
+
+    const remainingBalance = calculateRemainingBalance(invoice)
+
+    const handleSubmit = async () => {
+      setSubmitting(true)
+      try {
+        await handleRecordPayment(
+          invoice, 
+          paymentType, 
+          paymentType === 'partial' ? parseFloat(amount) : undefined
+        )
+        onClose()
+      } finally {
+        setSubmitting(false)
+      }
+    }
+
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription>
+              Record a payment for invoice {invoice.id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Payment Type</Label>
+              <Select
+                value={paymentType}
+                onValueChange={(value: 'full' | 'deposit' | 'partial') => setPaymentType(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Full Payment</SelectItem>
+                  <SelectItem value="deposit">Deposit (30%)</SelectItem>
+                  <SelectItem value="partial">Partial Payment</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {paymentType === 'partial' && (
+              <div className="grid gap-2">
+                <Label>Amount</Label>
+                <Input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="Enter payment amount"
+                  min="0"
+                  max={remainingBalance}
+                />
+              </div>
+            )}
+
+            <div className="text-sm text-gray-500">
+              <p>Remaining Balance: Ksh {remainingBalance.toLocaleString()}</p>
+              {paymentType === 'deposit' && (
+                <p>Deposit Amount: Ksh {(invoice.amount * 0.3).toLocaleString()}</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmit}
+              disabled={submitting || (paymentType === 'partial' && (!amount || parseFloat(amount) <= 0))}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Recording...
+                </>
+              ) : (
+                'Record Payment'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
     <div className="p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -850,6 +1064,11 @@ export default function InvoicesPage() {
                           <Badge className={`ml-3 ${getStatusColor(invoice.status)}`}>
                             {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                           </Badge>
+                          {invoice.payments && invoice.payments.length > 0 && (
+                            <Badge variant="outline" className="ml-2">
+                              {invoice.payments.length} Payment{invoice.payments.length > 1 ? 's' : ''}
+                            </Badge>
+                          )}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 mt-2">
                           <div className="flex items-center text-sm text-gray-500">
@@ -895,6 +1114,10 @@ export default function InvoicesPage() {
                           <DropdownMenuItem onClick={() => handlePrint(invoice, 'receipt')}>
                             <Receipt className="mr-2 h-4 w-4" />
                             Print Receipt
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenPaymentDialog(invoice)}>
+                            <DollarSign className="mr-2 h-4 w-4" />
+                            Record Payment
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toast.info("Edit functionality would be implemented here")}>
                             Edit Invoice
@@ -1057,6 +1280,18 @@ export default function InvoicesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Payment Dialog */}
+      {selectedInvoiceForPayment && (
+        <PaymentDialog
+          invoice={selectedInvoiceForPayment}
+          isOpen={isPaymentDialogOpen}
+          onClose={() => {
+            setIsPaymentDialogOpen(false)
+            setSelectedInvoiceForPayment(null)
+          }}
+        />
+      )}
     </div>
   )
 }
