@@ -88,18 +88,19 @@ export default function TasksPage() {
   // Fetch clients for the select dropdown
   const fetchClients = async () => {
     try {
-      // You might need to create a clients API endpoint or use a mock list
-      // For now, creating a mock client list based on the original mockTasks
-      const uniqueClients = [
-        { id: 1, name: "John & Sarah Smith" },
-        { id: 2, name: "David Williams" },
-        { id: 3, name: "Thompson Family" },
-        { id: 4, name: "Maria Garcia" },
-        { id: 5, name: "Chen Family" }
-      ]
-      setClients(uniqueClients)
+      const response = await fetch("/api/clients")
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch clients")
+      }
+      
+      const data = await response.json()
+      setClients(data.clients)
     } catch (error) {
       console.error("Error fetching clients:", error)
+      toast.error("Failed to load clients", {
+        description: "There was an error loading the client list. Please try again.",
+      })
     }
   }
 
