@@ -773,7 +773,7 @@ export default function InvoicesPage() {
 
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-white">
           <DialogHeader>
             <DialogTitle>Record Payment</DialogTitle>
             <DialogDescription>
@@ -790,7 +790,7 @@ export default function InvoicesPage() {
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   <SelectItem value="full">Full Payment</SelectItem>
                   <SelectItem value="deposit">Deposit (30%)</SelectItem>
                   <SelectItem value="partial">Partial Payment</SelectItem>
