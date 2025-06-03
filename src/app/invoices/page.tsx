@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, CreditCard, Download, Eye, Filter, Loader2, MoreHorizontal, Plus, Printer, Search, User } from "lucide-react"
+import { Calendar, CreditCard, Download, Eye, Filter, Loader2, MoreHorizontal, Plus, Printer, Search, User, Receipt } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
@@ -49,6 +49,19 @@ interface Invoice {
 interface Client {
   id: number
   name: string
+}
+
+// Add this interface after the Invoice interface
+interface Receipt {
+  id: string
+  invoiceId: string
+  clientId: number
+  clientName: string
+  amount: number
+  date: string
+  paymentMethod: string
+  referenceNumber: string
+  notes?: string
 }
 
 // Add this function before the InvoicesPage component
@@ -120,8 +133,101 @@ const generatePDF = (invoice: Invoice) => {
   doc.save(`invoice-${invoice.id}.pdf`)
 }
 
-// Add this function after the generatePDF function
-const printInvoice = (invoice: Invoice) => {
+// Add these functions after the generatePDF function
+const generateReceipt = (invoice: Invoice): Receipt => {
+  return {
+    id: `RCP-${Date.now()}`,
+    invoiceId: invoice.id,
+    clientId: invoice.clientId,
+    clientName: invoice.clientName,
+    amount: invoice.amount,
+    date: new Date().toISOString().split('T')[0],
+    paymentMethod: "Bank Transfer",
+    referenceNumber: `REF-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+    notes: "Payment received in full"
+  }
+}
+
+const printReceipt = (receipt: Receipt) => {
+  const doc = new jsPDF()
+  
+  // Add company header
+  doc.setFontSize(20)
+  doc.text('Super Africa Wildlife and Adventure Safaris', 14, 20)
+  doc.setFontSize(10)
+  doc.text('Royal Tower, Hospital Road', 14, 30)
+  doc.text('P.O. Box 100', 14, 35)
+  doc.text('Kisii, Kenya', 14, 40)
+  doc.text('info@superafricasafaris.com', 14, 45)
+
+  // Add receipt details
+  doc.setFontSize(16)
+  doc.text('RECEIPT', 140, 20)
+  doc.setFontSize(10)
+  doc.text(`Receipt #: ${receipt.id}`, 140, 30)
+  doc.text(`Invoice #: ${receipt.invoiceId}`, 140, 35)
+  doc.text(`Date: ${receipt.date}`, 140, 40)
+  doc.text(`Reference: ${receipt.referenceNumber}`, 140, 45)
+
+  // Add client details
+  doc.setFontSize(12)
+  doc.text('Received From:', 14, 60)
+  doc.setFontSize(10)
+  doc.text(receipt.clientName, 14, 70)
+
+  // Add payment details
+  doc.setFontSize(12)
+  doc.text('Payment Details:', 14, 80)
+  doc.setFontSize(10)
+  doc.text(`Amount: Ksh ${receipt.amount.toLocaleString()}`, 14, 90)
+  doc.text(`Payment Method: ${receipt.paymentMethod}`, 14, 95)
+  doc.text(`Reference Number: ${receipt.referenceNumber}`, 14, 100)
+
+  // Add notes if any
+  if (receipt.notes) {
+    doc.setFontSize(10)
+    doc.text('Notes:', 14, 110)
+    doc.setFontSize(9)
+    const splitNotes = doc.splitTextToSize(receipt.notes, 180)
+    doc.text(splitNotes, 14, 120)
+  }
+
+  // Add signature line
+  const finalY = receipt.notes ? 140 : 110
+  doc.setFontSize(10)
+  doc.text('Authorized Signature:', 14, finalY)
+  doc.line(14, finalY + 5, 60, finalY + 5)
+
+  // Open PDF in new window for printing
+  const pdfWindow = window.open('', '_blank')
+  if (pdfWindow) {
+    pdfWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Receipt ${receipt.id}</title>
+          <style>
+            body { margin: 0; }
+            iframe { width: 100%; height: 100vh; border: none; }
+          </style>
+        </head>
+        <body>
+          <iframe src="${doc.output('datauristring')}"></iframe>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 1000);
+            }
+          </script>
+        </body>
+      </html>
+    `)
+    pdfWindow.document.close()
+  }
+}
+
+// Rename the existing printInvoice function to printInvoiceDocument
+const printInvoiceDocument = (invoice: Invoice) => {
   const doc = new jsPDF()
   
   // Add company header
@@ -185,31 +291,17 @@ const printInvoice = (invoice: Invoice) => {
     doc.text(splitNotes, 14, finalY + 30)
   }
 
-  // Open PDF in new window for printing
-  const pdfWindow = window.open('', '_blank')
-  if (pdfWindow) {
-    pdfWindow.document.write(`
-      <html>
-        <head>
-          <title>Print Invoice ${invoice.id}</title>
-          <style>
-            body { margin: 0; }
-            iframe { width: 100%; height: 100vh; border: none; }
-          </style>
-        </head>
-        <body>
-          <iframe src="${doc.output('datauristring')}"></iframe>
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-              }, 1000);
-            }
-          </script>
-        </body>
-      </html>
-    `)
-    pdfWindow.document.close()
+  // Save the PDF
+  doc.save(`invoice-${invoice.id}.pdf`)
+}
+
+// Add this function to handle both invoice and receipt printing
+const handlePrint = (invoice: Invoice, type: 'invoice' | 'receipt') => {
+  if (type === 'invoice') {
+    printInvoiceDocument(invoice)
+  } else {
+    const receipt = generateReceipt(invoice)
+    printReceipt(receipt)
   }
 }
 
@@ -796,9 +888,13 @@ export default function InvoicesPage() {
                             <Download className="mr-2 h-4 w-4" />
                             Download PDF
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => printInvoice(invoice)}>
+                          <DropdownMenuItem onClick={() => handlePrint(invoice, 'invoice')}>
                             <Printer className="mr-2 h-4 w-4" />
-                            Print
+                            Print Invoice
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handlePrint(invoice, 'receipt')}>
+                            <Receipt className="mr-2 h-4 w-4" />
+                            Print Receipt
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toast.info("Edit functionality would be implemented here")}>
                             Edit Invoice
@@ -944,11 +1040,19 @@ export default function InvoicesPage() {
               Download
             </Button>
             <Button 
-              className="bg-green-600 hover:bg-green-700"
-              onClick={() => selectedInvoice && printInvoice(selectedInvoice)}
+              variant="outline"
+              className="mr-2"
+              onClick={() => selectedInvoice && handlePrint(selectedInvoice, 'invoice')}
             >
               <Printer className="mr-2 h-4 w-4" />
-              Print
+              Print Invoice
+            </Button>
+            <Button 
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => selectedInvoice && handlePrint(selectedInvoice, 'receipt')}
+            >
+              <Receipt className="mr-2 h-4 w-4" />
+              Print Receipt
             </Button>
           </DialogFooter>
         </DialogContent>
