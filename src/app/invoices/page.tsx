@@ -120,6 +120,99 @@ const generatePDF = (invoice: Invoice) => {
   doc.save(`invoice-${invoice.id}.pdf`)
 }
 
+// Add this function after the generatePDF function
+const printInvoice = (invoice: Invoice) => {
+  const doc = new jsPDF()
+  
+  // Add company header
+  doc.setFontSize(20)
+  doc.text('Super Africa Wildlife and Adventure Safaris', 14, 20)
+  doc.setFontSize(10)
+  doc.text('Royal Tower, Hospital Road', 14, 30)
+  doc.text('P.O. Box 100', 14, 35)
+  doc.text('Kisii, Kenya', 14, 40)
+  doc.text('info@superafricasafaris.com', 14, 45)
+
+  // Add invoice details
+  doc.setFontSize(16)
+  doc.text('INVOICE', 140, 20)
+  doc.setFontSize(10)
+  doc.text(`Invoice #: ${invoice.id}`, 140, 30)
+  doc.text(`Date: ${invoice.date}`, 140, 35)
+  doc.text(`Due Date: ${invoice.dueDate}`, 140, 40)
+  doc.text(`Status: ${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}`, 140, 45)
+
+  // Add client details
+  doc.setFontSize(12)
+  doc.text('Bill To:', 14, 60)
+  doc.setFontSize(10)
+  doc.text(invoice.clientName, 14, 70)
+
+  // Add items table
+  const tableData = invoice.items?.map(item => [
+    item.description,
+    item.quantity.toString(),
+    `Ksh ${item.price.toLocaleString()}`,
+    `Ksh ${item.total.toLocaleString()}`
+  ]) || []
+
+  autoTable(doc, {
+    startY: 80,
+    head: [['Description', 'Quantity', 'Price', 'Total']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: [34, 139, 34] }, // Green color for header
+    styles: { fontSize: 10 },
+    columnStyles: {
+      0: { cellWidth: 80 },
+      1: { cellWidth: 30, halign: 'right' },
+      2: { cellWidth: 40, halign: 'right' },
+      3: { cellWidth: 40, halign: 'right' }
+    }
+  })
+
+  // Add total
+  const finalY = (doc as any).lastAutoTable.finalY + 10
+  doc.setFontSize(12)
+  doc.text(`Total Amount: Ksh ${invoice.amount.toLocaleString()}`, 140, finalY)
+
+  // Add notes
+  if (invoice.notes) {
+    doc.setFontSize(10)
+    doc.text('Notes:', 14, finalY + 20)
+    doc.setFontSize(9)
+    const splitNotes = doc.splitTextToSize(invoice.notes, 180)
+    doc.text(splitNotes, 14, finalY + 30)
+  }
+
+  // Open PDF in new window for printing
+  const pdfWindow = window.open('', '_blank')
+  if (pdfWindow) {
+    pdfWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Invoice ${invoice.id}</title>
+          <style>
+            body { margin: 0; }
+            iframe { width: 100%; height: 100vh; border: none; }
+          </style>
+        </head>
+        <body>
+          <iframe src="${doc.output('datauristring')}"></iframe>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 1000);
+            }
+          </script>
+        </body>
+      </html>
+    `)
+    pdfWindow.document.close()
+  }
+}
+
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [clients, setClients] = useState<Client[]>([])
@@ -703,7 +796,7 @@ export default function InvoicesPage() {
                             <Download className="mr-2 h-4 w-4" />
                             Download PDF
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toast.info("Print functionality would be implemented here")}>
+                          <DropdownMenuItem onClick={() => printInvoice(invoice)}>
                             <Printer className="mr-2 h-4 w-4" />
                             Print
                           </DropdownMenuItem>
@@ -852,7 +945,7 @@ export default function InvoicesPage() {
             </Button>
             <Button 
               className="bg-green-600 hover:bg-green-700"
-              onClick={() => toast.info("Print functionality would be implemented here")}
+              onClick={() => selectedInvoice && printInvoice(selectedInvoice)}
             >
               <Printer className="mr-2 h-4 w-4" />
               Print
