@@ -4,7 +4,7 @@ import { useSidebar } from "@/components/sidebar-provider"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Calendar, ChevronLeft, ClipboardList, CreditCard, Home, Mail, Menu, MessageSquare, Users, LogOut, Settings } from "lucide-react"
 import { useState, useEffect } from "react"
 import {
@@ -65,7 +65,6 @@ const navItems = [
 export default function Sidebar() {
   const { isOpen, toggle } = useSidebar()
   const pathname = usePathname()
-  const router = useRouter()
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<{ name: string; email: string } | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
