@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Download, Trash2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Download, Trash2, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
@@ -49,6 +50,8 @@ interface Log {
 export default function LogsPage() {
   const [logs, setLogs] = useState<Log[]>([])
   const [loading, setLoading] = useState(true)
+  const [clearingLogs, setClearingLogs] = useState(false)
+  const [logTypeToDelete, setLogTypeToDelete] = useState<string>('all')
 
   useEffect(() => {
     fetchLogs()
@@ -74,7 +77,7 @@ export default function LogsPage() {
     if (!confirm('Are you sure you want to delete this log?')) return
 
     try {
-      const response = await fetch(`/api/logs/${logId}`, {
+      const response = await fetch(`/api/logs?id=${logId}`, {
         method: 'DELETE'
       })
       const data = await response.json()
@@ -91,6 +94,64 @@ export default function LogsPage() {
     }
   }
 
+  const handleClearLogs = async () => {
+    const typeLabels = {
+      'login': 'login logs',
+      'activity': 'activity logs', 
+      'all': 'all logs'
+    }
+    
+    const confirmMessage = `Are you sure you want to clear ${typeLabels[logTypeToDelete as keyof typeof typeLabels]}? This action cannot be undone.`
+    
+    if (!confirm(confirmMessage)) return
+    
+    setClearingLogs(true)
+    try {
+      const response = await fetch(`/api/logs?action=clear-logs&type=${logTypeToDelete}`, {
+        method: 'DELETE'
+      })
+      const data = await response.json()
+
+      if (data.status === 'OK') {
+        toast.success(data.message)
+        // Refresh logs to show updated list
+        fetchLogs()
+      } else {
+        throw new Error(data.message)
+      }
+    } catch (error) {
+      console.error('Failed to clear logs:', error)
+      toast.error('Failed to clear logs')
+    } finally {
+      setClearingLogs(false)
+    }
+  }
+
+  const formatDateTime = (log: Log): string => {
+    // Try different date fields in order of preference
+    const dateString = log.created_at || log.login_time
+    
+    if (!dateString) return 'N/A'
+    
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return 'Invalid Date'
+      
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      })
+    } catch (error) {
+      console.error('Date parsing error:', error)
+      return 'Invalid Date'
+    }
+  }
+
   const exportToPDF = () => {
     const doc = new jsPDF()
     
@@ -100,7 +161,7 @@ export default function LogsPage() {
     doc.setFontSize(10)
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22)
 
-    // Prepare table data - updated to use the flattened user fields
+    // Prepare table data with properly formatted dates
     const tableData = logs.map(log => [
       log.user_name,
       log.user_email,
@@ -109,7 +170,7 @@ export default function LogsPage() {
       log.action_description || 'User login',
       log.entity_type || 'N/A',
       log.entity_id || 'N/A',
-      log.created_at ? new Date(log.created_at).toLocaleString() : (log.login_time ? new Date(log.login_time).toLocaleString() : 'N/A'),
+      formatDateTime(log),
       log.ip_address
     ])
 
@@ -134,16 +195,41 @@ export default function LogsPage() {
           <h1 className="text-3xl font-bold text-gray-900">System Logs</h1>
           <p className="text-gray-500 mt-1">View all system activity logs</p>
         </div>
-        <Button onClick={exportToPDF} className="mt-4 md:mt-0">
-          <Download className="w-4 h-4 mr-2" />
-          Export to PDF
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 mt-4 md:mt-0">
+          <div className="flex items-center gap-2">
+            <Select value={logTypeToDelete} onValueChange={setLogTypeToDelete}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className='bg-white'>
+                <SelectItem value="all">All Logs</SelectItem>
+                <SelectItem value="login">Login Logs</SelectItem>
+                <SelectItem value="activity">Activity Logs</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+            className='bg-black'
+              onClick={handleClearLogs} 
+              variant="destructive"
+              disabled={clearingLogs || logs.length === 0}
+            >
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              {clearingLogs ? 'Clearing...' : 'Clear'}
+            </Button>
+          </div>
+          <Button onClick={exportToPDF} disabled={logs.length === 0}>
+            <Download className="w-4 h-4 mr-2" />
+            Export to PDF
+          </Button>
+        </div>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Activity Logs</CardTitle>
-          <CardDescription>List of all system activities</CardDescription>
+          <CardDescription>
+            List of all system activities ({logs.length} total)
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -169,8 +255,8 @@ export default function LogsPage() {
                       <span className="mx-1">•</span>
                       <span>{log.user_role}</span>
                       <span className="mx-1">•</span>
-                      <span>
-                        {log.created_at ? new Date(log.created_at).toLocaleString() : (log.login_time ? new Date(log.login_time).toLocaleString() : 'N/A')}
+                      <span className="font-medium text-gray-700">
+                        {formatDateTime(log)}
                       </span>
                     </div>
                     <div className="text-sm mt-1">

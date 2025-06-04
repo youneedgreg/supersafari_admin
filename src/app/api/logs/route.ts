@@ -46,7 +46,7 @@ export async function GET() {
     `;
     await executeQuery(createTableQuery);
 
-    // Query to get all logs (both login and activity logs) with nested user object
+    // Updated query to ensure consistent field names
     const query = `
       SELECT 
         l.*,
@@ -57,12 +57,12 @@ export async function GET() {
         SELECT 
           id,
           user_id,
-          'login' as log_type,
-          NULL as action_type,
-          NULL as action_description,
+          'Login' as action_type,
+          'User login' as action_description,
           NULL as entity_type,
           NULL as entity_id,
-          login_time as timestamp,
+          login_time as created_at,
+          login_time,
           ip_address,
           user_agent
         FROM login_logs
@@ -70,18 +70,18 @@ export async function GET() {
         SELECT 
           id,
           user_id,
-          'activity' as log_type,
           action_type,
           action_description,
           entity_type,
           entity_id,
-          created_at as timestamp,
+          created_at,
+          created_at as login_time,
           ip_address,
           user_agent
         FROM activity_logs
       ) l
       JOIN users u ON l.user_id = u.id
-      ORDER BY l.timestamp DESC
+      ORDER BY l.created_at DESC
       LIMIT 100
     `;
 
@@ -102,9 +102,6 @@ export async function GET() {
 }
 
 export async function DELETE(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
-  
   try {
     // Get auth token from cookies
     const cookieStore = await cookies();
@@ -128,6 +125,51 @@ export async function DELETE(request: Request) {
       }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const action = searchParams.get('action');
+
+    // Handle clear logs by type
+    if (action === 'clear-logs') {
+      const logType = searchParams.get('type');
+      
+      if (!logType) {
+        return NextResponse.json({
+          status: 'ERROR',
+          message: 'Log type is required'
+        }, { status: 400 });
+      }
+
+      let message = '';
+      
+      switch (logType) {
+        case 'login':
+          await executeQuery('DELETE FROM login_logs');
+          message = 'Login logs cleared successfully';
+          break;
+        case 'activity':
+          await executeQuery('DELETE FROM activity_logs');
+          message = 'Activity logs cleared successfully';
+          break;
+        case 'all':
+          await executeQuery('DELETE FROM login_logs');
+          await executeQuery('DELETE FROM activity_logs');
+          message = 'All logs cleared successfully';
+          break;
+        default:
+          return NextResponse.json({
+            status: 'ERROR',
+            message: 'Invalid log type'
+          }, { status: 400 });
+      }
+      
+      return NextResponse.json({
+        status: 'OK',
+        message
+      });
+    }
+
+    // Handle single log deletion
     if (!id) {
       return NextResponse.json({
         status: 'ERROR',
@@ -135,7 +177,7 @@ export async function DELETE(request: Request) {
       }, { status: 400 });
     }
 
-    // Fix: First determine which log type to delete
+    // First determine which log type to delete
     const checkQuery = `SELECT 'login' as source FROM login_logs WHERE id = ?
                         UNION
                         SELECT 'activity' as source FROM activity_logs WHERE id = ?
