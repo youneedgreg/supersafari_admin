@@ -125,13 +125,24 @@ export default function Sidebar() {
 
   const handleLogout = async () => {
     try {
+      // Call logout API to clear server-side session
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to logout');
+      }
+
       // Clear the auth cookie
-      document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-      // Redirect to login page
-      router.push('/login')
+      document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      
+      // Force a hard redirect to login page
+      window.location.href = '/login';
     } catch (error) {
-      console.error('Failed to logout:', error)
-      toast.error('Failed to logout')
+      console.error('Failed to logout:', error);
+      toast.error('Failed to logout');
     }
   }
 
