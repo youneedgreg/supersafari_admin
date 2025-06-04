@@ -195,9 +195,6 @@ export default function Sidebar() {
             <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
               <DialogTrigger asChild>
                 <div className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-md">
-                  <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center text-white font-semibold">
-                    {userProfile?.name?.[0]?.toUpperCase() || 'A'}
-                  </div>
                   <div className="ml-3">
                     <p className="text-sm font-medium text-gray-700">{userProfile?.name || 'Loading...'}</p>
                     <p className="text-xs text-gray-500">{userProfile?.email || 'Loading...'}</p>
@@ -205,7 +202,7 @@ export default function Sidebar() {
                   <Settings className="ml-auto h-4 w-4 text-gray-400" />
                 </div>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="bg-white">
                 <DialogHeader>
                   <DialogTitle>Edit Profile</DialogTitle>
                 </DialogHeader>
