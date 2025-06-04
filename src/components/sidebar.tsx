@@ -137,8 +137,13 @@ export default function Sidebar() {
       // Clear the auth cookie
       document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       
-      // Force a hard redirect to login page
-      window.location.href = '/login';
+      // Show success message
+      toast.success('Successfully logged out');
+      
+      // Small delay to show the toast before redirect
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 500);
     } catch (error) {
       console.error('Failed to logout:', error);
       toast.error('Failed to logout');
