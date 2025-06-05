@@ -137,7 +137,13 @@ export default function LogsPage() {
       const date = new Date(dateString)
       if (isNaN(date.getTime())) return 'Invalid Date'
       
-      return date.toLocaleString('en-US', {
+      // Debug: Let's see what we're working with
+      console.log('Raw date string:', dateString)
+      console.log('Parsed date (UTC):', date.toISOString())
+      console.log('Parsed date (local):', date.toLocaleString())
+      
+      // First, let's try without timezone specification to see current behavior
+      const localTime = date.toLocaleString('en-US', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -146,6 +152,39 @@ export default function LogsPage() {
         second: '2-digit',
         hour12: true
       })
+      
+      // Also try with explicit Kenya timezone
+      const kenyaTime = date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+        timeZone: 'Africa/Nairobi'
+      })
+      
+      console.log('Local time:', localTime)
+      console.log('Kenya time:', kenyaTime)
+      
+      // For now, let's manually add 3 hours to see if that fixes it
+      const adjustedDate = new Date(date.getTime() + (3 * 60 * 60 * 1000))
+      const manualAdjusted = adjustedDate.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      })
+      
+      console.log('Manual +3 hours:', manualAdjusted)
+      
+      // Return the manually adjusted time for now
+      return manualAdjusted
+      
     } catch (error) {
       console.error('Date parsing error:', error)
       return 'Invalid Date'
@@ -159,7 +198,7 @@ export default function LogsPage() {
     doc.setFontSize(16)
     doc.text('System Logs Report', 14, 15)
     doc.setFontSize(10)
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22)
+    doc.text(`Generated on: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}`, 14, 22)
 
     // Prepare table data with properly formatted dates
     const tableData = logs.map(log => [
@@ -201,14 +240,13 @@ export default function LogsPage() {
               <SelectTrigger className="w-[140px]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className='bg-white'>
+              <SelectContent>
                 <SelectItem value="all">All Logs</SelectItem>
                 <SelectItem value="login">Login Logs</SelectItem>
                 <SelectItem value="activity">Activity Logs</SelectItem>
               </SelectContent>
             </Select>
             <Button 
-            className='bg-black'
               onClick={handleClearLogs} 
               variant="destructive"
               disabled={clearingLogs || logs.length === 0}
