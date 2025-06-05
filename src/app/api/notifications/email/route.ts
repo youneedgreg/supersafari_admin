@@ -7,7 +7,7 @@ const transporter = nodemailer.createTransport({
   port: parseInt(process.env.SMTP_PORT || '587'),
   secure: process.env.SMTP_SECURE === 'true',
   auth: {
-    user: process.env.SMTP_USER || 'info@SUPERAFRICASAFARIS.com',
+    user: process.env.SMTP_USER || 'info@superafricasafaris.com',
     pass: process.env.SMTP_PASSWORD,
   },
 });
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     // Email content
     const mailOptions = {
       from: process.env.SMTP_USER || 'info@SUPERAFRICASAFARIS.com',
-      to: 'info@SUPERAFRICASAFARIS.com',
+      to: 'info@superafricasafaris.com',
       subject: `[${type.toUpperCase()}] ${title}`,
       html: `
         <h2>${title}</h2>
