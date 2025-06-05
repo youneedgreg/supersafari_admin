@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     // Email content
     const mailOptions = {
-      from: process.env.SMTP_USER || 'info@SUPERAFRICASAFARIS.com',
+      from: process.env.SMTP_USER || 'info@superafricasafaris.com',
       to: 'info@superafricasafaris.com',
       subject: `[${type.toUpperCase()}] ${title}`,
       html: `
